@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>সবাইকে জানাও | নাগরিক প্রতিবেদন প্ল্যাটফর্ম</title>
+    <meta name="description" content="সবাইকে জানাও — বাংলাদেশে জনস্বার্থ সংক্রান্ত সমস্যা ও নাগরিক অভিযোগ দায়িত্বশীলভাবে প্রকাশের মডারেটেড প্ল্যাটফর্ম।" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="সবাইকে জানাও | নাগরিক প্রতিবেদন প্ল্যাটফর্ম" />
+    <meta property="og:description" content="সবাইকে জানাও — বাংলাদেশে জনস্বার্থ সংক্রান্ত সমস্যা ও নাগরিক অভিযোগ দায়িত্বশীলভাবে প্রকাশের মডারেটেড প্ল্যাটফর্ম।" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="সবাইকে জানাও" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="সবাইকে জানাও | নাগরিক প্রতিবেদন প্ল্যাটফর্ম" />
+    <meta name="twitter:description" content="সবাইকে জানাও — বাংলাদেশে জনস্বার্থ সংক্রান্ত সমস্যা ও নাগরিক অভিযোগ দায়িত্বশীলভাবে প্রকাশের মডারেটেড প্ল্যাটফর্ম।" />
+    <meta name="theme-color" content="#0F828C" />
+
+    <script type="application/ld+json" id="seo-jsonld">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Sobaike Janao",
+        "alternateName": "সবাইকে জানাও",
+        "inLanguage": ["bn", "en"]
+      }
+    </script>
+
+    <!-- Official Brand Favicons & Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="./brand/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./brand/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="./brand/favicon-48x48.png" />
+    <link rel="shortcut icon" href="./brand/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./brand/apple-touch-icon.png" />
+    <link rel="manifest" href="./site.webmanifest" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <script>
+      (function() {
+        try {
+          var stored = localStorage.getItem('sobaike-janao-theme') || localStorage.getItem('theme');
+          var theme = 'light';
+          if (stored === 'dark') {
+            theme = 'dark';
+          } else if (stored === 'light') {
+            theme = 'light';
+          } else if (stored === 'system') {
+            var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            theme = prefersDark ? 'dark' : 'light';
+          } else {
+            // First visit: no theme stored in localStorage -> ALWAYS default to Light Mode
+            theme = 'light';
+          }
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.style.colorScheme = theme;
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.documentElement.style.colorScheme = 'light';
+          document.documentElement.classList.remove('dark');
+        }
+
+      })();
+    </script>
+  </head>
+  <body class="bg-ui-page text-ui-content-primary antialiased selection:bg-ui-accent-soft">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

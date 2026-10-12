@@ -1,0 +1,85 @@
+import React from 'react';
+import { ArrowLeft, Compass } from 'lucide-react';
+import { COMING_SOON_SERVICES, ComingSoonServiceKey } from '../theme/tokens';
+import { useApp } from '../context/AppContext';
+import { Button } from '../components/ui/Button';
+import { AppIcon } from '../components/ui/AppIcon';
+import { PublicPageContainer } from '../components/layout/PublicPageContainer';
+
+export interface ComingSoonPageProps {
+  serviceKey: ComingSoonServiceKey;
+}
+
+export const ComingSoonPage: React.FC<ComingSoonPageProps> = ({ serviceKey }) => {
+  const { language, navigateTo } = useApp();
+  const service = COMING_SOON_SERVICES[serviceKey];
+
+  return (
+    <PublicPageContainer id={`coming-soon-${serviceKey}-page`}>
+      <div className="w-full max-w-[640px] mx-auto py-10 md:py-16 text-center space-y-6">
+        {/* Service Icon */}
+        <div
+          id={`coming-soon-icon-${serviceKey}`}
+          className="w-16 h-16 mx-auto rounded-2xl bg-ui-surface-subtle border border-ui-stroke-subtle text-ui-content-secondary flex items-center justify-center shadow-xs"
+        >
+          <AppIcon name={service.iconName} size="xl" strokeWidth={2} className="text-ui-content-secondary" />
+        </div>
+
+        {/* Coming Soon Status Pill */}
+        <div className="flex justify-center">
+          <span
+            id={`coming-soon-badge-${serviceKey}`}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[13px] font-semibold bg-ui-surface-subtle border border-ui-stroke-subtle text-ui-content-secondary shadow-2xs"
+          >
+            <span className="w-2 h-2 rounded-full bg-ui-warning-text animate-pulse" />
+            <span>{language === 'bn' ? service.badgeBn : service.badgeEn}</span>
+          </span>
+        </div>
+
+        {/* Service Title & Explanation */}
+        <div className="space-y-3">
+          <h1
+            id={`coming-soon-title-${serviceKey}`}
+            className="text-[26px] sm:text-[30px] font-extrabold text-ui-content-primary tracking-tight leading-snug"
+          >
+            {language === 'bn' ? service.nameBn : service.nameEn}
+          </h1>
+
+          <p
+            id={`coming-soon-description-${serviceKey}`}
+            className="text-[16px] leading-[1.6] text-ui-content-secondary max-w-[480px] mx-auto"
+          >
+            {language === 'bn'
+              ? 'এই সেবাটি এখনো চালু হয়নি।'
+              : "This service isn't available yet."}
+          </p>
+        </div>
+
+        {/* Navigation Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <Button
+            id={`coming-soon-home-btn-${serviceKey}`}
+            variant="primary"
+            size="lg"
+            leftIcon={<ArrowLeft className="w-5 h-5" />}
+            onClick={() => navigateTo('/')}
+            className="w-full sm:w-auto min-h-[44px]"
+          >
+            {language === 'bn' ? 'মূল পাতায় ফিরুন' : 'Back to home'}
+          </Button>
+
+          <Button
+            id={`coming-soon-explore-btn-${serviceKey}`}
+            variant="secondary"
+            size="lg"
+            leftIcon={<Compass className="w-5 h-5" />}
+            onClick={() => navigateTo('/explore')}
+            className="w-full sm:w-auto min-h-[44px]"
+          >
+            {language === 'bn' ? 'চালু সেবাগুলো দেখুন' : 'Explore active services'}
+          </Button>
+        </div>
+      </div>
+    </PublicPageContainer>
+  );
+};

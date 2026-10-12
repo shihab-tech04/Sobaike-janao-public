@@ -1,0 +1,176 @@
+name: Production Smoke
+
+on:
+  workflow_run:
+    workflows: ["Deploy"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SITE_URL: https://shihabshajib01-cell.github.io/sobaike-janao/
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
+    steps:
+      - name: Verify live Public site
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in {1..12}; do
+            code=$(curl -L -sS -o /tmp/public-index.html -w "%{http_code}" "$SITE_URL" || true)
+            if [ "$code" = "200" ]; then
+              ok=1
+              break
+            fi
+            echo "Attempt $attempt returned HTTP $code; retrying..."
+            sleep 10
+          done
+          test "$ok" = "1"
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('/tmp/public-index.html').read_text(errors='replace')
+          if 'id="root"' not in html and "id='root'" not in html:
+              raise SystemExit('ERROR: production HTML is missing the React root element')
+          if '/src/main.tsx' in html:
+              raise SystemExit('ERROR: production page references source entry instead of bundled assets')
+          print('Public site smoke check passed')
+          PY
+
+      - name: Verify public Supabase payload privacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_KEY"
+
+          curl --fail-with-body -sS \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/get_public_published_reports" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' > /tmp/published-reports.json
+
+          curl --fail-with-body -sS \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/get_public_home_feed" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"p_visitor_lat":null,"p_visitor_lng":null,"p_filter":"all","p_district":null}' > /tmp/home-feed.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          forbidden_exact = {
+              'latitude', 'longitude', 'lat', 'lng', 'coordinates', 'coordinate',
+              'distance', 'distance_m', 'distance_meters', 'visitor_lat', 'visitor_lng',
+              'reporter_latitude', 'reporter_longitude', 'reporter_lat', 'reporter_lng',
+              'gps', 'location_accuracy', 'location_accuracy_m', 'location_accuracy_meters',
+              'reporter_contact', 'contact_info', 'contact_email_or_phone',
+              'client_submission_id', 'visitor_id', 'session_id'
+          }
+
+          def scan(value, path='root'):
+              leaks = []
+              if isinstance(value, dict):
+                  for key, child in value.items():
+                      normalized = str(key).lower()
+                      if normalized in forbidden_exact:
+                          leaks.append(f'{path}.{key}')
+                      leaks.extend(scan(child, f'{path}.{key}'))
+              elif isinstance(value, list):
+                  for index, child in enumerate(value):
+                      leaks.extend(scan(child, f'{path}[{index}]'))
+              return leaks
+
+          for filename in ('/tmp/published-reports.json', '/tmp/home-feed.json'):
+              data = json.loads(Path(filename).read_text())
+              leaks = scan(data)
+              if leaks:
+                  raise SystemExit(f'Public privacy regression in {filename}: {leaks[:20]}')
+
+          print('Public Supabase payload privacy check passed')
+          PY
+
+      - name: Verify hardened anonymous RPC surface
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          call_rpc() {
+            local rpc="$1"
+            local payload="$2"
+            local outfile="$3"
+            curl -sS -o "$outfile" -w "%{http_code}" \
+              -X POST "$SUPABASE_URL/rest/v1/rpc/$rpc" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              -H "Content-Type: application/json" \
+              -d "$payload"
+          }
+
+          legacy_code=$(call_rpc \
+            submit_public_complaint \
+            '{"p_payload":{},"p_client_submission_id":"security-test-legacy","p_reporter_context":{}}' \
+            /tmp/legacy-submit.json)
+
+          if ! grep -qi "permission denied" /tmp/legacy-submit.json; then
+            echo "ERROR: legacy submit_public_complaint is still anonymously callable (HTTP $legacy_code)"
+            cat /tmp/legacy-submit.json
+            exit 1
+          fi
+
+          helper_code=$(call_rpc \
+            can_upload_public_evidence \
+            '{"p_storage_path":"public-submissions/security-test/file.webp"}' \
+            /tmp/legacy-helper.json)
+
+          if ! grep -qi "permission denied" /tmp/legacy-helper.json; then
+            echo "ERROR: obsolete can_upload_public_evidence helper is still anonymously callable (HTTP $helper_code)"
+            cat /tmp/legacy-helper.json
+            exit 1
+          fi
+
+          duplicate_read_code=$(call_rpc \
+            is_public_published_evidence \
+            '{"p_storage_path":"public-submissions/security-test/file.webp"}' \
+            /tmp/duplicate-read-helper.json)
+
+          if ! grep -qi "permission denied" /tmp/duplicate-read-helper.json; then
+            echo "ERROR: duplicate published-evidence helper is still anonymously callable (HTTP $duplicate_read_code)"
+            cat /tmp/duplicate-read-helper.json
+            exit 1
+          fi
+
+          current_code=$(call_rpc \
+            can_upload_public_complaint_evidence \
+            '{"p_storage_path":"public-submissions/security-test/file.webp"}' \
+            /tmp/current-helper.json)
+
+          if [ "$current_code" != "200" ] || [ "$(cat /tmp/current-helper.json)" != "false" ]; then
+            echo "ERROR: current evidence policy helper contract changed unexpectedly"
+            cat /tmp/current-helper.json
+            exit 1
+          fi
+
+          published_read_code=$(call_rpc \
+            is_published_complaint_evidence \
+            '{"p_storage_path":"public-submissions/security-test/file.webp"}' \
+            /tmp/published-read-helper.json)
+
+          if [ "$published_read_code" != "200" ] || [ "$(cat /tmp/published-read-helper.json)" != "false" ]; then
+            echo "ERROR: published-evidence read helper contract changed unexpectedly"
+            cat /tmp/published-read-helper.json
+            exit 1
+          fi
+
+          echo "Anonymous RPC surface hardening check passed"
