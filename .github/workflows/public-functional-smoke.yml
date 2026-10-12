@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SITE_URL: https://shihabshajib01-cell.github.io/sobaike-janao/
-      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      SITE_URL: https://shihab-tech04.github.io/Sobaike-janao-public/
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ahiaymyqfmyyrjkwgvhi.supabase.co' }}
+      SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' }}
 
     steps:
       - name: Checkout

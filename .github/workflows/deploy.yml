@@ -34,8 +34,8 @@ jobs:
 
       - name: Build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ahiaymyqfmyyrjkwgvhi.supabase.co' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
         run: npm run build
 
@@ -61,12 +61,38 @@ jobs:
     permissions:
       pages: write
       id-token: write
+      actions: read
 
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      - name: Wait for legacy Pages publisher to finish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for attempt in {1..36}; do
+            status=$(curl -fsSL \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&per_page=100" \
+              | python -c 'import json,sys; runs=[r for r in json.load(sys.stdin).get("workflow_runs",[]) if r.get("name")=="pages build and deployment"]; print(max(runs,key=lambda r:r["id"]).get("status","none") if runs else "none")')
+            if [ "$status" = "completed" ]; then
+              echo "Legacy Pages publisher completed; safe to deploy Vite artifact."
+              exit 0
+            fi
+            if [ "$status" = "none" ] && [ "$attempt" -ge 6 ]; then
+              echo "No legacy publisher for this commit; continuing."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Legacy Pages publisher did not finish in time."
+          exit 1
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
