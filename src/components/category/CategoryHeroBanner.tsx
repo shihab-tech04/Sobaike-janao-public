@@ -94,7 +94,8 @@ export const CategoryHeroBanner: React.FC<CategoryHeroBannerProps> = ({
 
   const resolvedDesktopMediaTranslateY =
     desktopMediaTranslateY ??
-    HERO_TOKENS.sections[sectionKey]?.desktopMediaTranslateY;
+    HERO_TOKENS.sections[sectionKey]?.desktopMediaTranslateY ??
+    '0px';
 
   const HeadingTag = headingLevel;
 

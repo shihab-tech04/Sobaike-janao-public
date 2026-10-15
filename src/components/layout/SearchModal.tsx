@@ -3,13 +3,13 @@ import { useApp, RoutePath } from '../../context/AppContext';
 import { Modal } from '../ui/Modal';
 import { SearchInput } from '../ui/SearchInput';
 import { CategoryBadge } from '../ui/CategoryBadge';
-import { SECTIONS, SectionKey } from '../../theme/tokens';
+import { SECTIONS, SECTION_KEYS } from '../../theme/tokens';
 
 export const SearchModal: React.FC = () => {
   const { isSearchModalOpen, setIsSearchModalOpen, navigateTo, language } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const quickCategories: SectionKey[] = ['harassment', 'rickshaw', 'extortion'];
+  const quickCategories = SECTION_KEYS;
 
   const handleSelectSection = (path: RoutePath) => {
     setIsSearchModalOpen(false);

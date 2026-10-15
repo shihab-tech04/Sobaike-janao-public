@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check, ArrowRight } from 'lucide-react';
-import { SectionKey, SECTIONS, COMING_SOON_SERVICES, ComingSoonServiceKey } from '../../theme/tokens';
+import { SectionKey, SECTIONS, COMING_SOON_SERVICES, ComingSoonServiceKey, REPORT_FORM_SECTION_KEYS } from '../../theme/tokens';
 import { CategoryIcon } from '../branding/CategoryIcon';
 import { AppIcon } from '../ui/AppIcon';
 import { useTaxonomy } from '../../services/taxonomyService';
@@ -86,7 +86,10 @@ export const Step1ServiceSelect: React.FC<Step1ServiceSelectProps> = ({
       primaryVar: 'var(--sec-load_shedding-primary)',
     },
   ];
-  const activeServices = allServices.filter((service) => Boolean(segments[service.key]));
+  // Keep the composer limited to categories whose public form contract is readable and verified.
+  const activeServices = allServices.filter(
+    (service) => REPORT_FORM_SECTION_KEYS.includes(service.key) && Boolean(segments[service.key])
+  );
 
   const comingSoonList = Object.values(COMING_SOON_SERVICES).filter(
     (cs) => cs.key !== 'illegal_occupation'

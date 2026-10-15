@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp, RoutePath } from '../../context/AppContext';
-import { SECTIONS, SectionKey } from '../../theme/tokens';
+import { SECTIONS, SectionKey, SECTION_KEYS } from '../../theme/tokens';
+import { CategoryIcon } from '../branding/CategoryIcon';
 import { Button } from '../ui/Button';
 import { ThemeSelector } from '../ui/ThemeSelector';
 import { BrandLogo } from '../branding/BrandLogo';
@@ -14,7 +15,7 @@ export const DesktopLeftRail: React.FC = () => {
     path: RoutePath;
     nameBn: string;
     nameEn: string;
-    iconName: AppIconName;
+    iconName?: AppIconName;
     sectionKey?: SectionKey;
     isComingSoon?: boolean;
     badgeBn?: string;
@@ -27,38 +28,13 @@ export const DesktopLeftRail: React.FC = () => {
       nameEn: 'Home',
       iconName: 'home',
     },
-    {
-      id: 'rail-harassment',
-      path: '/harassment',
-      nameBn: SECTIONS.harassment.shortNameBn,
-      nameEn: SECTIONS.harassment.shortNameEn,
-      iconName: 'harassment',
-      sectionKey: 'harassment',
-    },
-    {
-      id: 'rail-rickshaw',
-      path: '/rickshaw',
-      nameBn: SECTIONS.rickshaw.shortNameBn,
-      nameEn: SECTIONS.rickshaw.shortNameEn,
-      iconName: 'rickshaw',
-      sectionKey: 'rickshaw',
-    },
-    {
-      id: 'rail-extortion',
-      path: '/extortion',
-      nameBn: SECTIONS.extortion.shortNameBn,
-      nameEn: SECTIONS.extortion.shortNameEn,
-      iconName: 'extortion',
-      sectionKey: 'extortion',
-    },
-    {
-      id: 'rail-load-shedding',
-      path: '/load-shedding',
-      nameBn: SECTIONS.load_shedding.shortNameBn,
-      nameEn: SECTIONS.load_shedding.shortNameEn,
-      iconName: 'zap-off',
-      sectionKey: 'load_shedding',
-    },
+    ...SECTION_KEYS.map((key) => ({
+      id: `rail-${key.replaceAll('_', '-')}`,
+      path: SECTIONS[key].slug as RoutePath,
+      nameBn: SECTIONS[key].shortNameBn,
+      nameEn: SECTIONS[key].shortNameEn,
+      sectionKey: key,
+    })),
     {
       id: 'rail-explore',
       path: '/explore',
@@ -84,19 +60,7 @@ export const DesktopLeftRail: React.FC = () => {
 
   const getSectionActiveStyles = (sectionKey?: SectionKey) => {
     if (!sectionKey) return 'bg-ui-surface-elevated text-ui-content-primary font-semibold border border-ui-stroke-default';
-    if (sectionKey === 'harassment') {
-      return 'bg-[var(--sec-harassment-bg)] text-[var(--sec-harassment-text)] border border-[var(--sec-harassment-border)] font-semibold';
-    }
-    if (sectionKey === 'rickshaw') {
-      return 'bg-[var(--sec-rickshaw-bg)] text-[var(--sec-rickshaw-text)] border border-[var(--sec-rickshaw-border)] font-semibold';
-    }
-    if (sectionKey === 'extortion') {
-      return 'bg-[var(--sec-extortion-bg)] text-[var(--sec-extortion-text)] border border-[var(--sec-extortion-border)] font-semibold';
-    }
-    if (sectionKey === 'load_shedding') {
-      return 'bg-[var(--sec-load_shedding-bg)] text-[var(--sec-load_shedding-text)] border border-[var(--sec-load_shedding-border)] font-semibold';
-    }
-    return 'bg-ui-surface-elevated text-ui-content-primary font-semibold border border-ui-stroke-default';
+    return 'border font-semibold';
   };
 
   return (
@@ -147,19 +111,28 @@ export const DesktopLeftRail: React.FC = () => {
                     ? getSectionActiveStyles(item.sectionKey)
                     : 'text-ui-content-secondary'
                 }`}
+                style={isActive && item.sectionKey ? {
+                  backgroundColor: `var(--sec-${item.sectionKey}-bg)`,
+                  color: `var(--sec-${item.sectionKey}-text)`,
+                  borderColor: `var(--sec-${item.sectionKey}-border)`,
+                } : undefined}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <AppIcon
-                    name={item.iconName}
-                    size="lg"
-                    className={`transition-colors ${
-                      isActive && !secConfig
-                        ? 'text-ui-content-primary'
-                        : !isActive
-                        ? 'text-ui-content-muted'
-                        : ''
-                    }`}
-                  />
+                  {item.sectionKey ? (
+                    <CategoryIcon section={item.sectionKey} size="md" />
+                  ) : item.iconName ? (
+                    <AppIcon
+                      name={item.iconName}
+                      size="lg"
+                      className={`transition-colors ${
+                        isActive && !secConfig
+                          ? 'text-ui-content-primary'
+                          : !isActive
+                          ? 'text-ui-content-muted'
+                          : ''
+                      }`}
+                    />
+                  ) : null}
                   <span className="truncate">{language === 'bn' ? item.nameBn : item.nameEn}</span>
                 </div>
 

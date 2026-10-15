@@ -17,7 +17,6 @@ import { HarassmentPage } from '../../pages/HarassmentPage';
 import { RickshawPage } from '../../pages/RickshawPage';
 import { ExtortionPage } from '../../pages/ExtortionPage';
 import { UtilityPage } from '../../pages/UtilityPage';
-import { ComingSoonPage } from '../../pages/ComingSoonPage';
 import { ReportDetailPage } from '../../pages/ReportDetailPage';
 import { ReportPage } from '../../pages/ReportPage';
 import { SearchPage } from '../../pages/SearchPage';
@@ -26,9 +25,16 @@ import { LocationPage } from '../../pages/LocationPage';
 import { SubjectPage } from '../../pages/SubjectPage';
 import { SeoManager } from '../seo/SeoManager';
 import { MapExploreSkeleton } from '../ui/LoadingSkeleton';
+import { SectionKey } from '../../theme/tokens';
 
 const LazyExplorePage = React.lazy(() =>
   import('../../pages/ExplorePage').then((m) => ({ default: m.ExplorePage }))
+);
+
+const CategoryExploreRoute: React.FC<{ section: SectionKey }> = ({ section }) => (
+  <React.Suspense fallback={<MapExploreSkeleton />}>
+    <LazyExplorePage initialSection={section} />
+  </React.Suspense>
 );
 
 const ReportDetailRouteWrapper: React.FC = () => {
@@ -168,7 +174,9 @@ export const AppShell: React.FC = () => {
                   <Route path="/rickshaw" element={<RickshawPage />} />
                   <Route path="/extortion" element={<ExtortionPage />} />
                   <Route path="/load-shedding" element={<UtilityPage />} />
-                  <Route path="/illegal-occupation" element={<ComingSoonPage serviceKey="illegal_occupation" />} />
+                  <Route path="/public-safety" element={<CategoryExploreRoute section="public_safety" />} />
+                  <Route path="/road-transport" element={<CategoryExploreRoute section="road_transport" />} />
+                  <Route path="/illegal-occupation" element={<CategoryExploreRoute section="illegal_occupation" />} />
                   <Route path="/report" element={<ReportPage />} />
                   <Route
                     path="/explore"

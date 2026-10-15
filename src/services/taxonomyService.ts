@@ -1,11 +1,12 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { SectionKey, SECTIONS } from '../theme/tokens';
+import { SectionKey, SECTIONS, SECTION_KEYS } from '../theme/tokens';
 import { SubcategoryOption, SEGMENT_SUBCATEGORIES } from '../data/reportOptions';
 import { SUBCATEGORIES } from '../data/categories';
 import { useState, useEffect } from 'react';
 
 export interface SupabaseSegmentRow {
   id: string;
+  slug?: string;
   name_bn: string;
   name_en: string;
   active?: boolean;
@@ -49,16 +50,22 @@ export interface SegmentTaxonomyItem {
 // In-memory cache initialized with robust local fallbacks until a successful backend read
 let cachedSegments: Record<string, SegmentTaxonomyItem> = {
   harassment: { ...SECTIONS.harassment, id: 'harassment' },
-  rickshaw: { ...SECTIONS.rickshaw, id: 'rickshaw' },
-  extortion: { ...SECTIONS.extortion, id: 'extortion' },
   load_shedding: { ...SECTIONS.load_shedding, id: 'load_shedding' },
+  extortion: { ...SECTIONS.extortion, id: 'extortion' },
+  public_safety: { ...SECTIONS.public_safety, id: 'public_safety' },
+  road_transport: { ...SECTIONS.road_transport, id: 'road_transport' },
+  illegal_occupation: { ...SECTIONS.illegal_occupation, id: 'illegal_occupation' },
+  rickshaw: { ...SECTIONS.rickshaw, id: 'rickshaw' },
 };
 
 let cachedSubcategories: Record<string, SubcategoryOption[]> = {
   harassment: [...SEGMENT_SUBCATEGORIES.harassment],
-  rickshaw: [...SEGMENT_SUBCATEGORIES.rickshaw],
-  extortion: [...SEGMENT_SUBCATEGORIES.extortion],
   load_shedding: [...SEGMENT_SUBCATEGORIES.load_shedding],
+  extortion: [...SEGMENT_SUBCATEGORIES.extortion],
+  public_safety: [...SEGMENT_SUBCATEGORIES.public_safety],
+  road_transport: [...SEGMENT_SUBCATEGORIES.road_transport],
+  illegal_occupation: [...SEGMENT_SUBCATEGORIES.illegal_occupation],
+  rickshaw: [...SEGMENT_SUBCATEGORIES.rickshaw],
 };
 
 let isFetched = false;
@@ -87,7 +94,7 @@ export const TaxonomyService = {
     try {
       const { data, error } = await supabase
         .from('segments')
-        .select('*')
+        .select('id,slug,name_bn,name_en,active,sort_order')
         .eq('active', true)
         .order('sort_order', { ascending: true });
 
@@ -130,6 +137,7 @@ export const TaxonomyService = {
           nextSegments[row.id] = {
             ...fallback,
             id: row.id,
+            slug: row.slug ? `/${row.slug.replace(/^\/+/, '')}` : fallback.slug,
             nameBn: row.name_bn || fallback.nameBn,
             nameEn: row.name_en || fallback.nameEn,
             sortOrder: typeof row.sort_order === 'number' ? row.sort_order : undefined,
@@ -156,7 +164,7 @@ export const TaxonomyService = {
     try {
       const { data, error } = await supabase
         .from('subcategories')
-        .select('*')
+        .select('id,segment_id,name_bn,name_en,description_bn,description_en,category_group,is_sensitive,active,sort_order')
         .eq('active', true)
         .order('sort_order', { ascending: true });
 
@@ -169,7 +177,7 @@ export const TaxonomyService = {
         const nextSubcategories: Record<string, SubcategoryOption[]> = {};
 
         // Initialize with empty arrays for known keys so successful backend reads stay authoritative
-        (['harassment', 'rickshaw', 'extortion', 'load_shedding'] as SectionKey[]).forEach((sec) => {
+        SECTION_KEYS.forEach((sec) => {
           nextSubcategories[sec] = [];
         });
 

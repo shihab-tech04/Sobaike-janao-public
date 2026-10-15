@@ -33,6 +33,9 @@ export const SUBCATEGORIES: Record<SectionKey, SubcategoryOption[]> = {
     { id: 'gas-shortage', nameBn: 'গ্যাস সংকট', nameEn: 'Gas Shortage' },
     { id: 'excess-electricity-bill', nameBn: 'অতিরিক্ত বিদ্যুৎ বিল', nameEn: 'Excess Electricity Bill' },
   ],
+  public_safety: [{ id: 'all', nameBn: 'সকল রিপোর্ট', nameEn: 'All Reports' }],
+  road_transport: [{ id: 'all', nameBn: 'সকল রিপোর্ট', nameEn: 'All Reports' }],
+  illegal_occupation: [{ id: 'all', nameBn: 'সকল রিপোর্ট', nameEn: 'All Reports' }],
 };
 
 export const POPULAR_DISTRICTS = [

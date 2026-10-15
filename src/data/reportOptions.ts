@@ -124,6 +124,9 @@ export const SEGMENT_SUBCATEGORIES: Record<SectionKey, SubcategoryOption[]> = {
       descriptionEn: 'Abnormal, inflated or unexplained electricity bill charges',
     },
   ],
+  public_safety: [],
+  road_transport: [],
+  illegal_occupation: [],
 };
 
 export const EVIDENCE_TYPES = [
