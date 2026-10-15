@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [apiClient, visitorSession, gateway, productionSmoke] = await Promise.all([
+const [apiClient, visitorSession, gateway, publicEvidence, productionSmoke] = await Promise.all([
   readFile(new URL('../src/services/apiClient.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/services/visitorSessionService.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/services/publicWriteGateway.ts', import.meta.url), 'utf8'),
+  readFile(new URL('../src/services/publicEvidenceService.ts', import.meta.url), 'utf8'),
   readFile(new URL('../.github/workflows/production-smoke.yml', import.meta.url), 'utf8'),
 ]);
 
@@ -53,4 +54,10 @@ test('production smoke probes only the current published-evidence helper names',
   assert.match(productionSmoke, /is_public_published_evidence/);
   assert.doesNotMatch(productionSmoke, /can_upload_public_complaint_evidence/);
   assert.doesNotMatch(productionSmoke, /is_published_complaint_evidence/);
+});
+
+test('published evidence lookups stay within the backend 100-report RPC limit', () => {
+  assert.match(publicEvidence, /const RPC_REPORT_ID_BATCH_SIZE = 100/);
+  assert.match(publicEvidence, /for \(let batchStart = 0; batchStart < cleanIds\.length; batchStart \+= RPC_REPORT_ID_BATCH_SIZE\)/);
+  assert.match(publicEvidence, /p_report_ids: reportIdBatch/);
 });

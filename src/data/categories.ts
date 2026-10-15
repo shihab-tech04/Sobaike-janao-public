@@ -9,7 +9,7 @@ export interface SubcategoryOption {
 export const SUBCATEGORIES: Record<SectionKey, SubcategoryOption[]> = {
   harassment: [
     { id: 'all', nameBn: 'সকল রিপোর্ট', nameEn: 'All Reports' },
-    { id: 'rape-sexual-violence', nameBn: 'ধর্ষণ', nameEn: 'Rape / Sexual Violence' },
+    { id: 'rape-sexual-violence', nameBn: 'ধর্ষণ / ধর্ষণের চেষ্টা', nameEn: 'Rape / Attempt to Rape' },
     { id: 'sexual-harassment', nameBn: 'যৌন হয়রানি', nameEn: 'Sexual Harassment' },
     { id: 'domestic-violence', nameBn: 'পারিবারিক সহিংসতা', nameEn: 'Domestic Violence' },
     { id: 'blackmail-coercion', nameBn: 'ব্ল্যাকমেইলিং', nameEn: 'Blackmailing' },
