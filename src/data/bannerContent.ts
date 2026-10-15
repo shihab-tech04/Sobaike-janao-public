@@ -13,7 +13,6 @@ export interface CategoryBannerContent {
   illustrationSrc: string;
   primaryCtaBn: string;
   primaryCtaEn: string;
-  showHomeCta?: boolean;
 }
 
 /**

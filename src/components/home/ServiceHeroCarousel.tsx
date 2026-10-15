@@ -34,7 +34,7 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
   reportCounts: _reportCounts = {},
   className = '',
 }) => {
-  const { language, openReportComposer, navigateTo } = useApp();
+  const { language, openReportComposer } = useApp();
   const { segments } = useTaxonomy();
   const { contentByKey, visibleKeys } = usePublicBanners();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -293,7 +293,6 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
             const isActive = index === safeIndex;
             const content = contentByKey[slide.key] ?? CANONICAL_BANNER_CONTENT[slide.key];
             const canSubmit = REPORT_FORM_SECTION_KEYS.includes(slide.key);
-            const showAction = content.showHomeCta === true;
 
             return (
               <div
@@ -322,12 +321,10 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
                   desktopDescriptionBn={content.desktopDescriptionBn}
                   desktopDescriptionEn={content.desktopDescriptionEn}
                   illustrationSrc={content.illustrationSrc}
-                  action={showAction ? {
-                    labelBn: canSubmit ? content.primaryCtaBn : 'প্রতিবেদন দেখুন',
-                    labelEn: canSubmit ? content.primaryCtaEn : 'View reports',
-                    onClick: () => canSubmit
-                      ? openReportComposer(slide.key)
-                      : navigateTo(slide.path),
+                  action={canSubmit ? {
+                    labelBn: content.primaryCtaBn,
+                    labelEn: content.primaryCtaEn,
+                    onClick: () => openReportComposer(slide.key),
                   } : undefined}
                   headingLevel="h2"
                   active={isActive}

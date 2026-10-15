@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { normalizePublishedBannerRows } from '../src/services/publicBannerMapper.mjs';
 
-const [tokens, composer, taxonomy, banners, explore, search, appShell, header, rail, analytics] = await Promise.all([
+const [tokens, composer, taxonomy, banners, explore, search, appShell, header, rail, analytics, carousel] = await Promise.all([
   readFile(new URL('../src/theme/tokens.ts', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/report-composer/Step1ServiceSelect.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/services/taxonomyService.ts', import.meta.url), 'utf8'),
@@ -14,6 +14,7 @@ const [tokens, composer, taxonomy, banners, explore, search, appShell, header, r
   readFile(new URL('../src/components/layout/Header.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/layout/DesktopLeftRail.tsx', import.meta.url), 'utf8'),
   readFile(new URL('../src/components/explore/ReportAnalyticsOverview.tsx', import.meta.url), 'utf8'),
+  readFile(new URL('../src/components/home/ServiceHeroCarousel.tsx', import.meta.url), 'utf8'),
 ]);
 
 const activeKeys = [
@@ -50,7 +51,7 @@ test('published banners exclude inactive, hidden, and unknown categories and sor
   assert.deepEqual(result.visibleKeys, ['public_safety', 'road_transport']);
   assert.equal(result.contentByKey.public_safety.illustrationSrc, '/fallback/public_safety.png');
   assert.equal(result.contentByKey.road_transport.titleEn, 'Road');
-  assert.equal(result.contentByKey.road_transport.showHomeCta, false);
+  assert.equal(Object.hasOwn(result.contentByKey.road_transport, 'showHomeCta'), false);
 });
 
 test('published banner image URLs accept only safe local paths or an explicitly trusted HTTPS origin', () => {
@@ -79,6 +80,13 @@ test('report composer exposes only the four categories with verified public form
   assert.match(composer, /REPORT_FORM_SECTION_KEYS\.includes\(service\.key\)/);
   const serviceList = composer.match(/const allServices:[\s\S]*?= \[([\s\S]*?)\n  \];/)?.[1] ?? '';
   assert.doesNotMatch(serviceList, /public_safety|road_transport|illegal_occupation/);
+});
+
+test('home hero keeps report actions on verified form categories without a new banner toggle', () => {
+  assert.match(carousel, /const canSubmit = REPORT_FORM_SECTION_KEYS\.includes\(slide\.key\)/);
+  assert.match(carousel, /action=\{canSubmit \? \{/);
+  assert.match(carousel, /onClick: \(\) => openReportComposer\(slide\.key\)/);
+  assert.doesNotMatch(carousel, /showHomeCta|navigateTo\(slide\.path\)/);
 });
 
 test('category exploration, filters, navigation, and summaries are wired to the shared seven-key registry', () => {

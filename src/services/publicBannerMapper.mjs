@@ -46,7 +46,6 @@ export function normalizePublishedBannerRows(rows, fallbackContent, trustedOrigi
         illustrationSrc: safeImageSource(content.illustrationSrc, fallback.illustrationSrc, trustedOrigins),
         primaryCtaBn: textOr(content.primaryCtaBn, fallback.primaryCtaBn),
         primaryCtaEn: textOr(content.primaryCtaEn, fallback.primaryCtaEn),
-        showHomeCta: content.showHomeCta === true,
       },
     }];
   });
