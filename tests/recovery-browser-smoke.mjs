@@ -37,6 +37,13 @@ try {
       await notice.waitFor({ state: 'hidden' });
     }
 
+    // Do not grant geolocation in this smoke; choose the existing consent option.
+    const locationConsent = page.locator('#location-consent-modal');
+    if (await locationConsent.isVisible()) {
+      await page.getByRole('button', { name: 'এখন নয়', exact: true }).click();
+      await locationConsent.waitFor({ state: 'hidden' });
+    }
+
     const assertNoHorizontalOverflow = async (locale) => {
       const widths = await page.evaluate(() => ({
         viewport: document.documentElement.clientWidth,
