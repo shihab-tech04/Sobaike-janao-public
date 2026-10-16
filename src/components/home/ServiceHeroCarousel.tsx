@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   SectionKey,
+  SECTION_KEYS,
+  SECTIONS,
+  REPORT_FORM_SECTION_KEYS,
   HERO_TOKENS,
   HERO_SLIDER_BEHAVIOR,
   getHeroSliderCssVars,
@@ -10,6 +13,7 @@ import { useApp, RoutePath } from '../../context/AppContext';
 import { useTaxonomy } from '../../services/taxonomyService';
 import { CategoryHeroBanner } from '../category/CategoryHeroBanner';
 import { CANONICAL_BANNER_CONTENT } from '../../data/bannerContent';
+import { usePublicBanners } from '../../services/publicBannerService';
 import { IconButton } from '../ui/IconButton';
 
 export interface ServiceSlide {
@@ -32,6 +36,7 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
 }) => {
   const { language, openReportComposer } = useApp();
   const { segments } = useTaxonomy();
+  const { contentByKey, visibleKeys } = usePublicBanners();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -44,13 +49,13 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
   const sliderRef = useRef<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const availableSlides: ServiceSlide[] = [
-    { key: 'harassment', path: '/harassment' },
-    { key: 'rickshaw', path: '/rickshaw' },
-    { key: 'extortion', path: '/extortion' },
-    { key: 'load_shedding', path: '/load-shedding' },
-  ];
-  const slides = availableSlides.filter((slide) => Boolean(segments[slide.key]));
+  const slides: ServiceSlide[] = SECTION_KEYS
+    .filter((key) => Boolean(segments[key]) && visibleKeys.includes(key))
+    .map((key) => ({ key, path: SECTIONS[key].slug }))
+    .sort((a, b) =>
+      (segments[a.key]?.sortOrder ?? SECTION_KEYS.indexOf(a.key)) -
+      (segments[b.key]?.sortOrder ?? SECTION_KEYS.indexOf(b.key))
+    );
 
   const totalSlides = slides.length;
   const isMultiSlide = totalSlides > 1;
@@ -286,7 +291,8 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
         >
           {slides.map((slide, index) => {
             const isActive = index === safeIndex;
-            const content = CANONICAL_BANNER_CONTENT[slide.key];
+            const content = contentByKey[slide.key] ?? CANONICAL_BANNER_CONTENT[slide.key];
+            const canSubmit = REPORT_FORM_SECTION_KEYS.includes(slide.key);
 
             return (
               <div
@@ -315,11 +321,11 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
                   desktopDescriptionBn={content.desktopDescriptionBn}
                   desktopDescriptionEn={content.desktopDescriptionEn}
                   illustrationSrc={content.illustrationSrc}
-                  action={{
+                  action={canSubmit ? {
                     labelBn: content.primaryCtaBn,
                     labelEn: content.primaryCtaEn,
                     onClick: () => openReportComposer(slide.key),
-                  }}
+                  } : undefined}
                   headingLevel="h2"
                   active={isActive}
                   ctaId={`${id}-report-btn-${slide.key}`}

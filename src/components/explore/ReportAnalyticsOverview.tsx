@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ReportItem } from '../../types/report';
-import { SectionKey, SECTIONS } from '../../theme/tokens';
+import { SectionKey, SECTIONS, SECTION_KEYS } from '../../theme/tokens';
 import { BANGLADESH_DISTRICTS } from '../../data/districts';
 import { toBanglaDigits } from '../../utils/formatters';
 import { CategoryIcon } from '../branding/CategoryIcon';
@@ -9,13 +9,6 @@ export interface ReportAnalyticsOverviewProps {
   reports: ReportItem[];
   language: 'bn' | 'en';
 }
-
-const CANONICAL_CATEGORIES: SectionKey[] = [
-  'harassment',
-  'rickshaw',
-  'extortion',
-  'load_shedding',
-];
 
 export const ReportAnalyticsOverview: React.FC<ReportAnalyticsOverviewProps> = ({
   reports,
@@ -44,12 +37,7 @@ export const ReportAnalyticsOverview: React.FC<ReportAnalyticsOverviewProps> = (
     const matchedDivisions = new Set<string>();
     let geoMappedCount = 0;
 
-    const counts: Record<SectionKey, number> = {
-      harassment: 0,
-      rickshaw: 0,
-      extortion: 0,
-      load_shedding: 0,
-    };
+    const counts = Object.fromEntries(SECTION_KEYS.map((key) => [key, 0])) as Record<SectionKey, number>;
 
     reports.forEach((rep) => {
       // Category count
@@ -77,7 +65,7 @@ export const ReportAnalyticsOverview: React.FC<ReportAnalyticsOverviewProps> = (
     });
 
     // Most reported category calculation with tie handling
-    const categoryEntries = CANONICAL_CATEGORIES.map((key) => ({
+    const categoryEntries = SECTION_KEYS.map((key) => ({
       key,
       count: counts[key],
     }));
@@ -99,7 +87,7 @@ export const ReportAnalyticsOverview: React.FC<ReportAnalyticsOverviewProps> = (
     }
 
     // Category distribution stats
-    const stats = CANONICAL_CATEGORIES.map((key) => {
+    const stats = SECTION_KEYS.map((key) => {
       const count = counts[key];
       const percentage =
         totalReports > 0 ? Math.round((count / totalReports) * 100) : 0;

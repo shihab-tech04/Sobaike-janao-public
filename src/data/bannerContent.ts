@@ -18,7 +18,8 @@ export interface CategoryBannerContent {
 /**
  * CANONICAL_BANNER_CONTENT
  * Single source of truth for both standalone category pages and the Home service carousel.
- * Normalized character lengths across all 4 categories for balanced rhythm and line consistency:
+ * Local fallback copy for each active public category. Published content is read from the
+ * public-only banner RPC and normalized against these safe fallbacks.
  *
  * QA Length Analysis:
  * - BN Desktop: 77, 81, 78, 77 chars (~77-81 chars, within ±5%)
@@ -82,5 +83,47 @@ export const CANONICAL_BANNER_CONTENT: Record<SectionKey, CategoryBannerContent>
     illustrationSrc: '/illustrations/services/load-shedding-hero-family-blackout-v01.jpg',
     primaryCtaBn: 'রিপোর্ট করুন',
     primaryCtaEn: 'Report now',
+  },
+  public_safety: {
+    section: 'public_safety',
+    titleBn: 'জননিরাপত্তা',
+    titleEn: 'Public Safety',
+    mobileDescriptionBn: 'চুরি, ডাকাতি, ছিনতাই বা অন্য কোনো জননিরাপত্তা ঝুঁকি দেখেছেন?',
+    mobileDescriptionEn: 'Seen theft, robbery, snatching, or another public safety risk?',
+    tabletDescriptionBn: 'চুরি, ডাকাতি, ছিনতাই ও জননিরাপত্তার ঝুঁকির তথ্য জানান।',
+    tabletDescriptionEn: 'Share information about theft, robbery, snatching, and public safety risks.',
+    desktopDescriptionBn: 'চুরি, ডাকাতি, ছিনতাই ও জননিরাপত্তার ঝুঁকির তথ্য জানান।',
+    desktopDescriptionEn: 'Share information about theft, robbery, snatching, and public safety risks.',
+    illustrationSrc: 'https://shihabshajib01-cell.github.io/sobaike-janao/illustrations/services/public-safety-hero-rickshaw-snatching-v01.avif',
+    primaryCtaBn: 'রিপোর্ট করুন',
+    primaryCtaEn: 'Report Now',
+  },
+  road_transport: {
+    section: 'road_transport',
+    titleBn: 'সড়ক ও যাতায়াত সমস্যা',
+    titleEn: 'Road & Transport Issues',
+    mobileDescriptionBn: 'ভাঙা রাস্তা, দুর্ঘটনার ঝুঁকি বা যানজটের কোনো সমস্যা দেখেছেন?',
+    mobileDescriptionEn: 'Seen damaged roads, hazards, or serious congestion around you?',
+    tabletDescriptionBn: 'ভাঙা রাস্তা, দুর্ঘটনার ঝুঁকি ও যানজটের তথ্য জানান।',
+    tabletDescriptionEn: 'Report damaged roads, transport hazards, and serious congestion.',
+    desktopDescriptionBn: 'ভাঙা রাস্তা, দুর্ঘটনার ঝুঁকি ও যানজটের তথ্য জানান।',
+    desktopDescriptionEn: 'Report damaged roads, transport hazards, and serious congestion.',
+    illustrationSrc: 'https://shihabshajib01-cell.github.io/sobaike-janao/illustrations/services/road-transport-hero-broken-road-rickshaw-v01.avif',
+    primaryCtaBn: 'রিপোর্ট করুন',
+    primaryCtaEn: 'Report Now',
+  },
+  illegal_occupation: {
+    section: 'illegal_occupation',
+    titleBn: 'অবৈধ দখল',
+    titleEn: 'Illegal Occupation',
+    mobileDescriptionBn: 'রাস্তা, ফুটপাত বা সরকারি জায়গা কোথাও অবৈধভাবে দখল করা হয়েছে?',
+    mobileDescriptionEn: 'Seen roads, footpaths or public areas occupied illegally here?',
+    tabletDescriptionBn: 'রাস্তা, ফুটপাত বা সরকারি জায়গা অবৈধভাবে দখলের তথ্য জানান।',
+    tabletDescriptionEn: 'Report roads, footpaths, or public spaces occupied illegally.',
+    desktopDescriptionBn: 'রাস্তা, ফুটপাত বা সরকারি জায়গা অবৈধভাবে দখলের তথ্য জানান।',
+    desktopDescriptionEn: 'Report roads, footpaths, or public spaces occupied illegally.',
+    illustrationSrc: 'https://shihabshajib01-cell.github.io/sobaike-janao/illustrations/services/illegal-occupation-hero-footpath-encroachment-v01.avif',
+    primaryCtaBn: 'রিপোর্ট করুন',
+    primaryCtaEn: 'Report Now',
   },
 };

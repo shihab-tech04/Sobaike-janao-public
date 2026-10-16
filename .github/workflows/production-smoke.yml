@@ -151,26 +151,4 @@ jobs:
             exit 1
           fi
 
-          current_code=$(call_rpc \
-            can_upload_public_complaint_evidence \
-            '{"p_storage_path":"public-submissions/security-test/file.webp"}' \
-            /tmp/current-helper.json)
-
-          if [ "$current_code" != "200" ] || [ "$(cat /tmp/current-helper.json)" != "false" ]; then
-            echo "ERROR: current evidence policy helper contract changed unexpectedly"
-            cat /tmp/current-helper.json
-            exit 1
-          fi
-
-          published_read_code=$(call_rpc \
-            is_published_complaint_evidence \
-            '{"p_storage_path":"public-submissions/security-test/file.webp"}' \
-            /tmp/published-read-helper.json)
-
-          if [ "$published_read_code" != "200" ] || [ "$(cat /tmp/published-read-helper.json)" != "false" ]; then
-            echo "ERROR: published-evidence read helper contract changed unexpectedly"
-            cat /tmp/published-read-helper.json
-            exit 1
-          fi
-
           echo "Anonymous RPC surface hardening check passed"

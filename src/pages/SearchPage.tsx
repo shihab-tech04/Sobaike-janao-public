@@ -8,7 +8,7 @@ import { ReportCard } from '../components/report/ReportCard';
 import { ReportFeedSkeleton } from '../components/ui/LoadingSkeleton';
 import { PublicPageContainer } from '../components/layout/PublicPageContainer';
 import { toBanglaDigits } from '../utils/formatters';
-import { SectionKey, SECTIONS } from '../theme/tokens';
+import { SectionKey, SECTIONS, SECTION_KEYS } from '../theme/tokens';
 import { Select } from '../components/ui/Select';
 import { HarassmentClassificationFilters } from '../components/report/HarassmentClassificationFilters';
 import {
@@ -188,10 +188,10 @@ export const SearchPage: React.FC = () => {
             onChange={(event) => setSelectedReportSegment(event.target.value as SectionKey | 'all')}
             options={[
               { value: 'all', label: language === 'bn' ? 'সকল প্রতিবেদন' : 'All reports' },
-              { value: 'harassment', label: language === 'bn' ? SECTIONS.harassment.nameBn : SECTIONS.harassment.nameEn },
-              { value: 'rickshaw', label: language === 'bn' ? SECTIONS.rickshaw.nameBn : SECTIONS.rickshaw.nameEn },
-              { value: 'extortion', label: language === 'bn' ? SECTIONS.extortion.nameBn : SECTIONS.extortion.nameEn },
-              { value: 'load_shedding', label: language === 'bn' ? SECTIONS.load_shedding.nameBn : SECTIONS.load_shedding.nameEn },
+              ...SECTION_KEYS.map((key) => ({
+                value: key,
+                label: language === 'bn' ? SECTIONS[key].nameBn : SECTIONS[key].nameEn,
+              })),
             ]}
           />
         </div>
