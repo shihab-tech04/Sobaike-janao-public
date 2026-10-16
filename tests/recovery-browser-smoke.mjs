@@ -28,6 +28,15 @@ try {
     await feedHeading.waitFor({ state: 'visible' });
     assert.equal((await feedHeading.innerText()).trim(), 'সকল প্রতিবেদন');
 
+    // The public app presents this first-visit notice before its navigation.
+    // Acknowledge it through the existing UI so the responsive menu can be tested.
+    const notice = page.locator('#first-visit-notice-modal');
+    if (await notice.isVisible()) {
+      await page.locator('label[for="first-visit-ack-checkbox"]').click();
+      await page.locator('#first-visit-acknowledge-btn').click();
+      await notice.waitFor({ state: 'hidden' });
+    }
+
     const assertNoHorizontalOverflow = async (locale) => {
       const widths = await page.evaluate(() => ({
         viewport: document.documentElement.clientWidth,
