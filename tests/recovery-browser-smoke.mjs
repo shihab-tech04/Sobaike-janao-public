@@ -26,6 +26,8 @@ try {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
     const feedHeading = page.locator('#home-feed-section h2');
     await feedHeading.waitFor({ state: 'visible' });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await feedHeading.waitFor({ state: 'visible' });
     assert.equal((await feedHeading.innerText()).trim(), 'সকল প্রতিবেদন');
 
     // The public app presents this first-visit notice before its navigation.
