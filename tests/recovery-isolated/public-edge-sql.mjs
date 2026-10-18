@@ -77,7 +77,8 @@ async function submitSyntheticReport() {
   };
   const first = await endpoint('public-write-gateway', request);
   assert.equal(first.status, 200);
-  assert.equal(first.json.success, true, `gateway rejected synthetic report: ${first.json.code ?? 'no code'}`);
+  assert.equal(first.json.success, true,
+    `gateway rejected synthetic report: ${first.json.code ?? 'no code'}: ${first.json.error ?? 'no details'}`);
   const id = first.json.result?.reportId;
   assert.match(id, /^SJ-[0-9]{4}-[0-9]{6}$/);
 
