@@ -147,8 +147,11 @@ try {
       await page.locator('#bottom-nav-search').click();
       await page.locator('#search-page-container input[aria-label]').waitFor({ state: 'visible' });
       await page.locator('#search-page-container input[aria-label]').focus();
+      assert.equal(await page.locator('#search-page-container input[aria-label]').evaluate((element) => document.activeElement === element), true);
+      await page.locator('#bottom-nav').waitFor({ state: 'hidden' });
       assert.equal(await page.locator('#bottom-nav').isVisible(), false, 'bottom navigation must yield to text entry');
       await page.locator('#search-page-container input[aria-label]').evaluate((element) => element.blur());
+      await page.locator('#bottom-nav').waitFor({ state: 'visible' });
       await page.locator('#bottom-nav-home').click();
       await page.locator('#home-feed-section').waitFor({ state: 'visible' });
       await page.locator('#bottom-nav-menu').click();

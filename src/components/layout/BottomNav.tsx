@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Home, Menu, PlusCircle, Search } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 /** The four approved primary mobile actions; category navigation lives in Menu. */
 export const BottomNav: React.FC = () => {
+  const [isEditingText, setIsEditingText] = useState(false);
   const {
     currentRoute,
     language,
@@ -13,6 +14,20 @@ export const BottomNav: React.FC = () => {
     openReportComposer,
     isReportComposerOpen,
   } = useApp();
+
+  useEffect(() => {
+    const isTextEntry = (target: EventTarget | null) =>
+      target instanceof HTMLElement
+      && target.matches('input:not([readonly]):not([type="checkbox"]):not([type="radio"]), textarea, [contenteditable="true"]');
+    const onFocusIn = (event: FocusEvent) => setIsEditingText(isTextEntry(event.target));
+    const onFocusOut = () => setIsEditingText(false);
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, []);
 
   const items = [
     {
@@ -50,6 +65,7 @@ export const BottomNav: React.FC = () => {
       id="bottom-nav"
       aria-label={language === 'bn' ? 'মোবাইল নেভিগেশন' : 'Mobile navigation'}
       className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-ui-surface border-t border-ui-stroke-subtle pb-safe mobile-keyboard-sensitive"
+      style={isEditingText ? { display: 'none' } : undefined}
     >
       <div className="grid grid-cols-4 items-center min-h-16 px-2">
         {items.map(({ id, name, icon: Icon, active, onClick }) => (
