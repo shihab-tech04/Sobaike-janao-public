@@ -148,6 +148,7 @@ try {
       await page.locator('#search-page-container input[aria-label]').waitFor({ state: 'visible' });
       await page.locator('#search-page-container input[aria-label]').focus();
       assert.equal(await page.locator('#search-page-container input[aria-label]').evaluate((element) => document.activeElement === element), true);
+      await page.locator('#root [data-text-entry-focused="true"]').waitFor({ state: 'attached' });
       await page.locator('#bottom-nav').waitFor({ state: 'hidden' });
       assert.equal(await page.locator('#bottom-nav').isVisible(), false, 'bottom navigation must yield to text entry');
       await page.locator('#search-page-container input[aria-label]').evaluate((element) => element.blur());

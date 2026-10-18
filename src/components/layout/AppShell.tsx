@@ -87,6 +87,10 @@ export const AppShell: React.FC = () => {
   } = useApp();
 
   const [isFirstVisitNoticeOpen, setIsFirstVisitNoticeOpen] = useState(false);
+  const [isTextFieldFocused, setIsTextFieldFocused] = useState(false);
+  const isTextEntry = (target: EventTarget | null) =>
+    target instanceof HTMLElement
+    && target.matches('input:not([readonly]):not([type="checkbox"]):not([type="radio"]), textarea, [contenteditable="true"]');
 
   useEffect(() => {
     // Check if visitor has accepted the responsibility notice
@@ -126,7 +130,12 @@ export const AppShell: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-ui-page text-ui-content-primary flex flex-col">
+    <div
+      className="min-h-screen bg-ui-page text-ui-content-primary flex flex-col"
+      data-text-entry-focused={isTextFieldFocused ? 'true' : 'false'}
+      onFocusCapture={(event) => setIsTextFieldFocused(isTextEntry(event.target))}
+      onBlurCapture={(event) => setIsTextFieldFocused(isTextEntry(event.relatedTarget))}
+    >
       {/* Skip Link for Keyboard & Screen Reader Accessibility */}
       <a
         href="#main-content"
@@ -219,7 +228,7 @@ export const AppShell: React.FC = () => {
 
       {/* 5. Mobile Fixed Bottom Navigation (< 768px) */}
       <ErrorBoundary componentName="BottomNav" fallback={null}>
-        <BottomNav />
+        <BottomNav keyboardActive={isTextFieldFocused} />
       </ErrorBoundary>
 
       {/* 6. Global Search Dialog Modal */}
