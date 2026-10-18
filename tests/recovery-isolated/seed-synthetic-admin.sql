@@ -14,3 +14,11 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.admin_users (user_id, active, is_super_admin, display_name)
 VALUES (:'ci_admin_user_id'::uuid, true, true, 'Synthetic CI administrator');
+
+-- The catalog definition comes from the checked-in notification foundation
+-- migration in the Admin repository; it contains no production notifications.
+INSERT INTO public.admin_notification_event_catalogue
+  (event_key, category, default_layer, default_severity, description, active)
+VALUES
+  ('complaint.published', 'complaint', 'workflow_activity', 'info',
+   'Complaint published to public feed', true);
