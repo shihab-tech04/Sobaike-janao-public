@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - recovery/2026-10-15-public-write-gateway
+      - recovery/2026-10-18-phase02-contract-test
   workflow_dispatch:
 
 permissions:
@@ -83,16 +84,18 @@ jobs:
           db = values.get('DB_URL') or values.get('DATABASE_URL')
           api = values.get('API_URL') or values.get('SUPABASE_URL')
           anon = values.get('ANON_KEY') or values.get('SUPABASE_ANON_KEY')
+          service = values.get('SERVICE_ROLE_KEY') or values.get('SUPABASE_SERVICE_ROLE_KEY')
           for name, value, port in [('database', db, 54322), ('API', api, 54321)]:
               url = urlparse(value or '')
               if url.scheme not in {'postgres', 'postgresql', 'http'} or url.hostname != '127.0.0.1' or url.port != port:
                   raise SystemExit(f'Refusing unexpected {name} endpoint')
-          if not anon:
-              raise SystemExit('Missing disposable local anonymous key')
+          if not anon or not service or anon == service:
+              raise SystemExit('Missing distinct disposable local API keys')
           with open(sys.argv[2], 'a', encoding='utf-8') as output:
               output.write(f'RECOVERY_LOCAL_DB_URL={db}\n')
               output.write(f'RECOVERY_LOCAL_API_URL={api}\n')
               output.write(f'RECOVERY_LOCAL_ANON_KEY={anon}\n')
+              output.write(f'RECOVERY_LOCAL_SERVICE_ROLE_KEY={service}\n')
           print('Verified disposable loopback database :54322 and API :54321.')
           PY
 
@@ -146,10 +149,19 @@ jobs:
           tail -60 "$RUNNER_TEMP/sobaike-local-edge.log"
           exit 1
 
+      - name: Install locked Public test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Test synthetic Public submission, retry, denial, and evidence sanitizer
+        id: synthetic_submit
         run: node tests/recovery-isolated/public-edge-sql.mjs
 
-      - name: Verify exactly one pending SQL record and private reporter context
+      - name: Test actual Auth + TOTP Admin moderation-to-Public SQL contract
+        env:
+          RECOVERY_SYNTHETIC_REPORT_ID: ${{ steps.synthetic_submit.outputs.synthetic_report_id }}
+        run: node tests/recovery-isolated/admin-publication-contract.mjs
+
+      - name: Verify exactly one published SQL record and scrubbed private reporter context
         run: psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file tests/recovery-isolated/assert-public-report.sql
 
       - name: Stop disposable local runner
