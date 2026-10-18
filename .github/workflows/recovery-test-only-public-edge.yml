@@ -59,6 +59,7 @@ jobs:
             "$GITHUB_WORKSPACE/recovery-backend/test-only/local-supabase/supabase/config.toml"
           test -s "$target/public-write-gateway/index.ts"
           test -s "$target/public-evidence-upload/index.ts"
+          test -s "$target/public-ip-location/index.ts"
           test -s "$target/_shared/webp-sanitizer.js"
 
       - name: Start disposable unlinked Supabase database

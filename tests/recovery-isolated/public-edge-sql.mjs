@@ -57,6 +57,31 @@ async function preflight() {
   console.log('PASS: CORS, unknown action, and direct anonymous RPC denial');
 }
 
+async function ipLocationSafety() {
+  const endpointUrl = `${api}/functions/v1/public-ip-location`;
+  const good = await fetch(endpointUrl, {
+    method: 'OPTIONS',
+    headers: { Origin: 'http://localhost:5173' },
+    signal: AbortSignal.timeout(25_000),
+  });
+  assert.equal(good.status, 200, 'restored IP-location Edge source must serve trusted CORS preflight');
+  assert.equal(await good.text(), 'ok');
+
+  const forbidden = await fetch(endpointUrl, {
+    method: 'OPTIONS',
+    headers: { Origin: 'https://unknown.invalid' },
+    signal: AbortSignal.timeout(25_000),
+  });
+  assert.equal(forbidden.status, 403, 'unapproved origin must not pass IP-location preflight');
+
+  const wrongMethod = await fetch(endpointUrl, {
+    method: 'POST', headers: { Origin: 'http://localhost:5173', apikey: anonKey },
+    body: '{}', signal: AbortSignal.timeout(25_000),
+  });
+  assert.equal(wrongMethod.status, 405, 'IP location must not accept writes');
+  console.log('PASS: recovered IP-location Edge source CORS and method gates');
+}
+
 async function submitSyntheticReport() {
   const submissionId = `ci-gateway-${randomUUID().replaceAll('-', '')}`;
   const request = {
@@ -109,5 +134,6 @@ async function submitSyntheticReport() {
 }
 
 await preflight();
+await ipLocationSafety();
 await submitSyntheticReport();
 console.log('SYNTHETIC_EDGE_HTTP_TESTS_PASS');
