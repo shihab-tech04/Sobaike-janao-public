@@ -49,8 +49,8 @@ export const BottomNav: React.FC<{ keyboardActive?: boolean }> = ({ keyboardActi
     <nav
       id="bottom-nav"
       aria-label={language === 'bn' ? 'মোবাইল নেভিগেশন' : 'Mobile navigation'}
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-ui-surface border-t border-ui-stroke-subtle pb-safe mobile-keyboard-sensitive"
-      style={keyboardActive ? { display: 'none' } : undefined}
+      data-keyboard-active={keyboardActive ? 'true' : 'false'}
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-ui-surface border-t border-ui-stroke-subtle pb-safe"
     >
       <div className="grid grid-cols-4 items-center min-h-16 px-2">
         {items.map(({ id, name, icon: Icon, active, onClick }) => (

@@ -859,13 +859,6 @@
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Let the mobile keyboard own the viewport while a text field is in focus. */
-@media (max-width: 767px) {
-  body:has(input:focus:not([readonly]), textarea:focus, [contenteditable="true"]:focus) .mobile-keyboard-sensitive {
-    display: none;
-  }
-}
-
 /* Additive safe-area utilities (base padding + safe inset) */
 .pt-safe-3\.5 {
   padding-top: calc(0.875rem + env(safe-area-inset-top, 0px));
@@ -975,6 +968,7 @@
 @media (max-width: 767.98px) {
   #mobile-header { display: block !important; }
   #bottom-nav { display: block !important; }
+  #bottom-nav[data-keyboard-active="true"] { display: none !important; }
   #tablet-compact-header { display: none !important; }
   #desktop-left-navigation-rail { display: none !important; }
 }
