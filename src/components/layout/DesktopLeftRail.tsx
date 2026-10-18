@@ -165,7 +165,7 @@ export const DesktopLeftRail: React.FC = () => {
         {/* Desktop Theme Control */}
         <ThemeSelector variant="compact" />
 
-        <TextSizeSelector />
+        <TextSizeSelector idPrefix="rail" />
 
         {/* Language Switcher Pill */}
         <button

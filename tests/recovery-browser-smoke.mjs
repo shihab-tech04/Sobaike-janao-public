@@ -121,12 +121,12 @@ try {
     });
     assert.ok(screenshot.byteLength > 1000);
 
-    await page.locator('#text-size-large').click();
+    await page.locator(desktop ? '#rail-text-size-large' : '#drawer-text-size-large').click();
     assert.equal(await page.locator('html').getAttribute('data-text-size'), 'large');
     const largeBodySize = await page.locator('body').evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
     assert.ok(largeBodySize >= 15.5, `larger reading mode must increase body text: ${largeBodySize}px`);
     await assertNoHorizontalOverflow('en dark large text');
-    await page.locator('#text-size-standard').click();
+    await page.locator(desktop ? '#rail-text-size-standard' : '#drawer-text-size-standard').click();
 
     if (desktop) {
       await page.locator('#rail-lang-toggle').click();
