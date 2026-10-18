@@ -149,7 +149,20 @@ try {
       await page.locator('#search-page-container input[aria-label]').focus();
       assert.equal(await page.locator('#search-page-container input[aria-label]').evaluate((element) => document.activeElement === element), true);
       await page.locator('#root [data-text-entry-focused="true"]').waitFor({ state: 'attached' });
-      await page.locator('#bottom-nav').waitFor({ state: 'hidden' });
+      const inspectKeyboard = () => page.evaluate(() => {
+        const nav = document.querySelector('#bottom-nav');
+        const shell = document.querySelector('[data-text-entry-focused]');
+        return {
+          focused: document.activeElement?.getAttribute('aria-label'),
+          shell: shell?.getAttribute('data-text-entry-focused'),
+          inline: nav?.getAttribute('style'),
+          display: nav ? getComputedStyle(nav).display : null,
+        };
+      });
+      console.log('keyboard focus immediately', JSON.stringify(await inspectKeyboard()));
+      await page.waitForTimeout(200);
+      console.log('keyboard focus settled', JSON.stringify(await inspectKeyboard()));
+      await page.locator('#bottom-nav').waitFor({ state: 'hidden', timeout: 3500 });
       assert.equal(await page.locator('#bottom-nav').isVisible(), false, 'bottom navigation must yield to text entry');
       await page.locator('#search-page-container input[aria-label]').evaluate((element) => element.blur());
       await page.locator('#bottom-nav').waitFor({ state: 'visible' });
