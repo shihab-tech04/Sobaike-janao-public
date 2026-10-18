@@ -53,6 +53,10 @@ jobs:
           target="$GITHUB_WORKSPACE/recovery-backend/test-only/local-supabase/supabase/functions"
           mkdir -p "$target"
           cp -a "$GITHUB_WORKSPACE/supabase/functions/." "$target/"
+          # This file is used only by the disposable local runner. The immutable
+          # backend snapshot and hosted Supabase auth settings are unchanged.
+          cp "$GITHUB_WORKSPACE/tests/recovery-isolated/supabase-mfa-test-config.toml" \
+            "$GITHUB_WORKSPACE/recovery-backend/test-only/local-supabase/supabase/config.toml"
           test -s "$target/public-write-gateway/index.ts"
           test -s "$target/public-evidence-upload/index.ts"
           test -s "$target/_shared/webp-sanitizer.js"
