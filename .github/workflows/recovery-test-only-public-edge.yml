@@ -1,0 +1,161 @@
+name: Recovery test-only Public Edge to SQL
+
+on:
+  push:
+    branches:
+      - recovery/2026-10-15-public-write-gateway
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-edge-sql:
+    name: Exercise recovered Public gateway against disposable Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout Public recovery branch
+        uses: actions/checkout@v4
+
+      - name: Checkout verified test-only backend fixture (immutable revision)
+        uses: actions/checkout@v4
+        with:
+          repository: shihab-tech04/Sobaike-Janao-Admin
+          ref: 3fb706a1e0b69275e3fb5a77bd68b6577662c302
+          path: recovery-backend
+          persist-credentials: false
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+
+      - name: Verify source digest and stage only local Edge source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+
+          root = Path('recovery-backend/test-only')
+          manifest = json.loads((root / 'baseline-manifest.json').read_text())
+          actual = hashlib.sha256((root / 'current_contract_baseline.sql').read_bytes()).hexdigest()
+          if actual != manifest['fixture']['sha256']:
+              raise SystemExit('Test-only baseline digest mismatch; refuse to start')
+          if not manifest['notHistoricalMigrationSeries'] or not manifest['notProductionDeployable']:
+              raise SystemExit('Refusing fixture without test-only safety markers')
+          if manifest['fixture']['includesApplicationRows'] or manifest['fixture']['includesReporterRecords']:
+              raise SystemExit('Refusing fixture containing production records')
+          print(f'Verified disposable fixture digest: {actual}')
+          PY
+          target="$GITHUB_WORKSPACE/recovery-backend/test-only/local-supabase/supabase/functions"
+          mkdir -p "$target"
+          cp -a "$GITHUB_WORKSPACE/supabase/functions/." "$target/"
+          test -s "$target/public-write-gateway/index.ts"
+          test -s "$target/public-evidence-upload/index.ts"
+          test -s "$target/_shared/webp-sanitizer.js"
+
+      - name: Start disposable unlinked Supabase database
+        working-directory: recovery-backend/test-only/local-supabase
+        run: supabase start
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Refuse non-loopback SQL and Edge targets
+        working-directory: recovery-backend/test-only/local-supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase status --output env > "$RUNNER_TEMP/sobaike-edge-local.env"
+          python3 - "$RUNNER_TEMP/sobaike-edge-local.env" "$GITHUB_ENV" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+
+          values = {}
+          for line in open(sys.argv[1], encoding='utf-8'):
+              if '=' in line:
+                  key, value = line.rstrip('\n').split('=', 1)
+                  values[key] = value.strip().strip('"')
+          db = values.get('DB_URL') or values.get('DATABASE_URL')
+          api = values.get('API_URL') or values.get('SUPABASE_URL')
+          anon = values.get('ANON_KEY') or values.get('SUPABASE_ANON_KEY')
+          for name, value, port in [('database', db, 54322), ('API', api, 54321)]:
+              url = urlparse(value or '')
+              if url.scheme not in {'postgres', 'postgresql', 'http'} or url.hostname != '127.0.0.1' or url.port != port:
+                  raise SystemExit(f'Refusing unexpected {name} endpoint')
+          if not anon:
+              raise SystemExit('Missing disposable local anonymous key')
+          with open(sys.argv[2], 'a', encoding='utf-8') as output:
+              output.write(f'RECOVERY_LOCAL_DB_URL={db}\n')
+              output.write(f'RECOVERY_LOCAL_API_URL={api}\n')
+              output.write(f'RECOVERY_LOCAL_ANON_KEY={anon}\n')
+          print('Verified disposable loopback database :54322 and API :54321.')
+          PY
+
+      - name: Allow captured Storage-owner replay only inside disposable container
+        shell: bash
+        run: |
+          set -euo pipefail
+          executor=$(psql "$RECOVERY_LOCAL_DB_URL" --tuples-only --no-align --command 'SELECT current_user')
+          owner=$(psql "$RECOVERY_LOCAL_DB_URL" --tuples-only --no-align --command "SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = 'storage.objects'::regclass")
+          if [[ "$executor" != postgres || "$owner" != supabase_storage_admin ]]; then
+            echo 'Unexpected executor or Storage ownership; stopping.'
+            exit 1
+          fi
+          container=$(docker ps --quiet --filter 'name=^/supabase_db_sobaike-admin-recovery-test-only$')
+          if [[ -z "$container" || "$container" == *$'\n'* ]]; then
+            echo 'Expected exactly one disposable local database container.'
+            exit 1
+          fi
+          docker exec "$container" psql -U supabase_admin -d postgres --set ON_ERROR_STOP=1 \
+            --command 'GRANT supabase_storage_admin TO postgres WITH SET TRUE, INHERIT FALSE, ADMIN FALSE'
+          can_switch=$(psql "$RECOVERY_LOCAL_DB_URL" --tuples-only --no-align \
+            --command "SELECT pg_has_role(current_user, 'supabase_storage_admin', 'SET')")
+          test "$can_switch" = t
+
+      - name: Apply contract snapshot and seed synthetic categories only
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file recovery-backend/test-only/current_contract_baseline.sql > "$RUNNER_TEMP/sobaike-sql-replay.log"
+          psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file recovery-backend/test-only/local-supabase/seed_synthetic_taxonomy.sql
+          psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file tests/recovery-isolated/seed-public-report.sql
+          psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file recovery-backend/test-only/local-supabase/assert_contracts.sql
+
+      - name: Start recovered Edge functions on local-only project
+        working-directory: recovery-backend/test-only/local-supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions serve --no-verify-jwt > "$RUNNER_TEMP/sobaike-local-edge.log" 2>&1 &
+          echo "LOCAL_EDGE_PID=$!" >> "$GITHUB_ENV"
+          for attempt in {1..60}; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' \
+              "$RECOVERY_LOCAL_API_URL/functions/v1/public-write-gateway" || true)
+            if [[ "$code" == 405 ]]; then
+              echo 'Local Edge gateway is serving the recovered source.'
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'Local Edge startup failed; see disposable runner log.'
+          tail -60 "$RUNNER_TEMP/sobaike-local-edge.log"
+          exit 1
+
+      - name: Test synthetic Public submission, retry, denial, and evidence sanitizer
+        run: node tests/recovery-isolated/public-edge-sql.mjs
+
+      - name: Verify exactly one pending SQL record and private reporter context
+        run: psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file tests/recovery-isolated/assert-public-report.sql
+
+      - name: Stop disposable local runner
+        if: always()
+        working-directory: recovery-backend/test-only/local-supabase
+        shell: bash
+        run: |
+          if [[ -n "${LOCAL_EDGE_PID:-}" ]]; then kill "$LOCAL_EDGE_PID" 2>/dev/null || true; fi
+          supabase stop >/dev/null 2>&1 || true
