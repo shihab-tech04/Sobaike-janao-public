@@ -31,13 +31,16 @@ async function preflight() {
     method: 'OPTIONS', headers: { ...baseHeaders }, signal: AbortSignal.timeout(25_000),
   });
   assert.equal(allowed.status, 200);
-  assert.equal(allowed.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+  // The disposable Supabase API gateway injects Access-Control-Allow-Origin: *
+  // on its own response path. Assert the recovered function's distinct body,
+  // rather than mistaking the local gateway's CORS header for our source header.
+  assert.equal(await allowed.text(), 'ok', 'approved origin must reach Edge preflight');
 
   const denied = await fetch(`${api}/functions/v1/public-write-gateway`, {
     method: 'OPTIONS', headers: { Origin: 'https://unapproved.invalid' }, signal: AbortSignal.timeout(25_000),
   });
   assert.equal(denied.status, 403, 'unknown browser origin must fail preflight');
-  assert.equal(denied.headers.get('access-control-allow-origin'), null);
+  assert.equal(await denied.text(), 'Forbidden', 'unknown origin must be rejected by Edge');
 
   const badAction = await endpoint('public-write-gateway', { action: 'unknown' });
   assert.equal(badAction.status, 400);
