@@ -9,7 +9,7 @@ const baseUrl = process.env.RECOVERY_BROWSER_BASE_URL;
 assert.equal(app, 'public');
 assert.ok(baseUrl, 'RECOVERY_BROWSER_BASE_URL must point to the loopback Vite server');
 
-const widths = [360, 768, 1280];
+const widths = [360, 390, 768, 1280, 1536];
 const browser = await chromium.launch({ headless: true });
 const screenshotDir = join(process.env.RUNNER_TEMP || tmpdir(), 'sobaike-responsive-smoke');
 await mkdir(screenshotDir, { recursive: true });
@@ -55,27 +55,112 @@ try {
     };
     await assertNoHorizontalOverflow('bn');
     let screenshot = await page.screenshot({
-      path: join(screenshotDir, `public-${width}-bn.png`),
+      path: join(screenshotDir, `public-${width}-bn-light.png`),
       animations: 'disabled',
     });
     assert.ok(screenshot.byteLength > 1000, `Bengali viewport screenshot was unexpectedly small at ${width}px`);
 
-    const menuButton = page.locator(width < 768 ? '#mobile-header-menu-btn' : '#tablet-menu-button');
-    await menuButton.click();
-    const toggle = page.locator('#drawer-lang-toggle');
-    await toggle.waitFor({ state: 'visible' });
-    await toggle.click();
+    const mobile = width < 768;
+    const desktop = width >= 1440;
+    if (mobile) {
+      const header = page.locator('#mobile-header');
+      assert.equal(await header.getAttribute('data-compact'), 'false');
+      const brand = page.locator('#mobile-header-brand-logo');
+      assert.equal(await brand.locator('img').count(), 1, 'one mobile brand mark');
+      assert.equal(await brand.getByText('সবাইকে জানাও').count(), 1, 'one Bangla wordmark');
+      assert.equal(await brand.getByText('Sobaike Janao').count(), 0, 'no duplicate English wordmark');
+      for (const id of ['menu', 'search', 'report', 'home']) {
+        const target = page.locator(`#bottom-nav-${id}`);
+        const box = await target.boundingBox();
+        assert.ok(box && box.width >= 44 && box.height >= 44, `mobile ${id} tap target at ${width}px must be at least 44px`);
+      }
+      assert.equal(await page.locator('#bottom-nav button').count(), 4);
+
+      // Scroll down compacts, then scrolling back toward the top expands.
+      await page.evaluate(() => {
+        const spacer = document.createElement('div');
+        spacer.id = 'responsive-test-scroll-spacer';
+        spacer.style.height = '2000px';
+        document.querySelector('#main-content')?.append(spacer);
+        window.scrollTo(0, 450);
+      });
+      await page.waitForFunction(() => document.querySelector('#mobile-header')?.getAttribute('data-compact') === 'true');
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.waitForFunction(() => document.querySelector('#mobile-header')?.getAttribute('data-compact') === 'false');
+      await page.locator('#responsive-test-scroll-spacer').evaluate((element) => element.remove());
+    }
+
+    if (desktop) {
+      await page.locator('#rail-lang-toggle').click();
+    } else {
+      await page.locator(mobile ? '#mobile-header-menu-btn' : '#tablet-menu-button').click();
+      const toggle = page.locator('#drawer-lang-toggle');
+      await toggle.waitFor({ state: 'visible' });
+      await toggle.click();
+    }
     await assertNoHorizontalOverflow('en');
     await page.getByRole('heading', { name: 'All reports', exact: true }).waitFor({ state: 'visible' });
     screenshot = await page.screenshot({
-      path: join(screenshotDir, `public-${width}-en.png`),
+      path: join(screenshotDir, `public-${width}-en-light.png`),
       animations: 'disabled',
     });
     assert.ok(screenshot.byteLength > 1000, `English viewport screenshot was unexpectedly small at ${width}px`);
+
+    // The theme and text-size modes are changed through the actual application UI.
+    if (desktop) {
+      await page.locator('#compact-theme-selector-btn').click();
+      await page.getByRole('option', { name: 'Dark' }).click();
+    } else {
+      await page.getByRole('radio', { name: 'Dark' }).click();
+    }
+    assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+    await assertNoHorizontalOverflow('en dark');
+    screenshot = await page.screenshot({
+      path: join(screenshotDir, `public-${width}-en-dark.png`),
+      animations: 'disabled',
+    });
+    assert.ok(screenshot.byteLength > 1000);
+
+    await page.locator('#text-size-large').click();
+    assert.equal(await page.locator('html').getAttribute('data-text-size'), 'large');
+    const largeBodySize = await page.locator('body').evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+    assert.ok(largeBodySize >= 15.5, `larger reading mode must increase body text: ${largeBodySize}px`);
+    await assertNoHorizontalOverflow('en dark large text');
+    await page.locator('#text-size-standard').click();
+
+    if (desktop) {
+      await page.locator('#rail-lang-toggle').click();
+    } else {
+      await page.locator('#drawer-lang-toggle').click();
+    }
+    assert.equal(await page.locator('html').getAttribute('lang'), 'bn');
+    screenshot = await page.screenshot({
+      path: join(screenshotDir, `public-${width}-bn-dark.png`),
+      animations: 'disabled',
+    });
+    assert.ok(screenshot.byteLength > 1000);
+    await assertNoHorizontalOverflow('bn dark');
+
+    if (mobile) {
+      await page.keyboard.press('Escape'); // Close the language/theme drawer.
+      await page.locator('#tablet-drawer').waitFor({ state: 'hidden' });
+      await page.locator('#bottom-nav-search').click();
+      await page.locator('#search-page-container input[aria-label]').waitFor({ state: 'visible' });
+      await page.locator('#search-page-container input[aria-label]').focus();
+      assert.equal(await page.locator('#bottom-nav').isVisible(), false, 'bottom navigation must yield to text entry');
+      await page.locator('#search-page-container input[aria-label]').evaluate((element) => element.blur());
+      await page.locator('#bottom-nav-home').click();
+      await page.locator('#home-feed-section').waitFor({ state: 'visible' });
+      await page.locator('#bottom-nav-menu').click();
+      await page.locator('#tablet-drawer').waitFor({ state: 'visible' });
+      await page.keyboard.press('Escape');
+      await page.locator('#bottom-nav-report').click();
+      await page.locator('#report-composer-modal').waitFor({ state: 'visible' });
+    }
     await page.close();
   }
   assert.deepEqual([...supabaseHosts], [], 'browser smoke must not contact any hosted Supabase project');
-  console.log(`Responsive Public home EN/BN smoke passed at ${widths.join(', ')} CSS pixels. Screenshots were rendered locally; no hosted data was requested.`);
+  console.log(`Responsive Public EN/BN × light/dark gate passed at ${widths.join(', ')} CSS pixels, including mobile navigation, scroll header, keyboard, text size, and focus targets. No hosted data requested.`);
 } finally {
   await browser.close();
 }

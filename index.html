@@ -13,7 +13,7 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="সবাইকে জানাও | নাগরিক প্রতিবেদন প্ল্যাটফর্ম" />
     <meta name="twitter:description" content="সবাইকে জানাও — বাংলাদেশে জনস্বার্থ সংক্রান্ত সমস্যা ও নাগরিক অভিযোগ দায়িত্বশীলভাবে প্রকাশের মডারেটেড প্ল্যাটফর্ম।" />
-    <meta name="theme-color" content="#0F828C" />
+    <meta name="theme-color" content="#1B4D6B" />
 
     <script type="application/ld+json" id="seo-jsonld">
       {
@@ -64,6 +64,12 @@
           document.documentElement.setAttribute('data-theme', 'light');
           document.documentElement.style.colorScheme = 'light';
           document.documentElement.classList.remove('dark');
+        }
+
+        try {
+          document.documentElement.setAttribute('data-text-size', localStorage.getItem('sobaike-janao-text-size') === 'large' ? 'large' : 'standard');
+        } catch (e) {
+          document.documentElement.setAttribute('data-text-size', 'standard');
         }
 
       })();

@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { Drawer } from '../ui/Drawer';
 import { ThemeSelector } from '../ui/ThemeSelector';
+import { TextSizeSelector } from '../ui/TextSizeSelector';
 import { getContextualReportRoute } from '../../utils/reportRoutes';
 import { BrandLogo } from '../branding/BrandLogo';
 
@@ -213,6 +214,13 @@ export const Header: React.FC = () => {
                 {language === 'bn' ? 'প্রদর্শন' : 'Appearance'}
               </span>
               <ThemeSelector variant="segmented" />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[14px] text-ui-content-secondary font-medium px-1">
+                {language === 'bn' ? 'লেখার আকার' : 'Text size'}
+              </span>
+              <TextSizeSelector />
             </div>
 
             {/* Language Switcher in Drawer */}

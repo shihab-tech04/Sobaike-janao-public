@@ -107,6 +107,7 @@
 @layer base {
   :root {
     --font-ui: 'Noto Sans Bengali', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --reader-scale: 1;
 
     /* Central Typography Tokens - Font Weights */
     --font-weight-regular: 400;
@@ -236,6 +237,10 @@
     --ui-destructive-hover: oklch(50.5% .213 27.518);
     --ui-destructive-active: oklch(44.4% .177 26.899);
     --ui-destructive-border: var(--ui-destructive-bg);
+  }
+
+  html[data-text-size="large"] {
+    --reader-scale: 1.125;
   }
 
   html[lang="en"] {
@@ -580,8 +585,8 @@
   body {
     -webkit-tap-highlight-color: transparent;
     text-rendering: optimizeLegibility;
-    font-size: var(--type-body-size);
-    line-height: var(--type-body-line);
+    font-size: calc(var(--type-body-size) * var(--reader-scale));
+    line-height: calc(var(--type-body-line) * var(--reader-scale));
     font-weight: var(--type-body-weight);
     background-color: var(--ui-page);
     color: var(--ui-text-primary);
@@ -593,112 +598,112 @@
 
   /* Responsive Semantic Heading Defaults */
   h1, .type-h1 {
-    font-size: var(--type-h1-size-mobile) !important;
-    line-height: var(--type-h1-line-mobile) !important;
+    font-size: calc(var(--type-h1-size-mobile) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-h1-line-mobile) * var(--reader-scale)) !important;
     font-weight: var(--type-h1-weight) !important;
     color: var(--ui-text-primary);
   }
 
   @media (min-width: 768px) {
     h1, .type-h1 {
-      font-size: var(--type-h1-size-tablet) !important;
-      line-height: var(--type-h1-line-tablet) !important;
+      font-size: calc(var(--type-h1-size-tablet) * var(--reader-scale)) !important;
+      line-height: calc(var(--type-h1-line-tablet) * var(--reader-scale)) !important;
     }
   }
 
   @media (min-width: 1440px) {
     h1, .type-h1 {
-      font-size: var(--type-h1-size-desktop) !important;
-      line-height: var(--type-h1-line-desktop) !important;
+      font-size: calc(var(--type-h1-size-desktop) * var(--reader-scale)) !important;
+      line-height: calc(var(--type-h1-line-desktop) * var(--reader-scale)) !important;
     }
   }
 
   h2, .type-h2 {
-    font-size: var(--type-h2-size-mobile) !important;
-    line-height: var(--type-h2-line-mobile) !important;
+    font-size: calc(var(--type-h2-size-mobile) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-h2-line-mobile) * var(--reader-scale)) !important;
     font-weight: var(--type-h2-weight) !important;
     color: var(--ui-text-primary);
   }
 
   @media (min-width: 768px) {
     h2, .type-h2 {
-      font-size: var(--type-h2-size-tablet) !important;
-      line-height: var(--type-h2-line-tablet) !important;
+      font-size: calc(var(--type-h2-size-tablet) * var(--reader-scale)) !important;
+      line-height: calc(var(--type-h2-line-tablet) * var(--reader-scale)) !important;
     }
   }
 
   h3, .type-h3 {
-    font-size: var(--type-h3-size-mobile) !important;
-    line-height: var(--type-h3-line-mobile) !important;
+    font-size: calc(var(--type-h3-size-mobile) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-h3-line-mobile) * var(--reader-scale)) !important;
     font-weight: var(--type-h3-weight) !important;
     color: var(--ui-text-primary);
   }
 
   @media (min-width: 768px) {
     h3, .type-h3 {
-      font-size: var(--type-h3-size-tablet) !important;
-      line-height: var(--type-h3-line-tablet) !important;
+      font-size: calc(var(--type-h3-size-tablet) * var(--reader-scale)) !important;
+      line-height: calc(var(--type-h3-line-tablet) * var(--reader-scale)) !important;
     }
   }
 
   h4, .type-h4 {
-    font-size: var(--type-h4-size-mobile) !important;
-    line-height: var(--type-h4-line-mobile) !important;
+    font-size: calc(var(--type-h4-size-mobile) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-h4-line-mobile) * var(--reader-scale)) !important;
     font-weight: var(--type-h4-weight) !important;
     color: var(--ui-text-primary);
   }
 
   @media (min-width: 768px) {
     h4, .type-h4 {
-      font-size: var(--type-h4-size-tablet) !important;
-      line-height: var(--type-h4-line-tablet) !important;
+      font-size: calc(var(--type-h4-size-tablet) * var(--reader-scale)) !important;
+      line-height: calc(var(--type-h4-line-tablet) * var(--reader-scale)) !important;
     }
   }
 
   h5, h6 {
-    font-size: var(--type-h5-size);
-    line-height: var(--type-h5-line);
+    font-size: calc(var(--type-h5-size) * var(--reader-scale));
+    line-height: calc(var(--type-h5-line) * var(--reader-scale));
     font-weight: var(--type-h5-weight);
     color: var(--ui-text-primary);
   }
 
   p, .type-body {
-    font-size: var(--type-body-size) !important;
-    line-height: var(--type-body-line) !important;
+    font-size: calc(var(--type-body-size) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-body-line) * var(--reader-scale)) !important;
     font-weight: var(--type-body-weight) !important;
   }
 
   label, .type-label {
-    font-size: var(--type-label-size) !important;
-    line-height: var(--type-label-line) !important;
+    font-size: calc(var(--type-label-size) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-label-line) * var(--reader-scale)) !important;
     font-weight: var(--type-label-weight) !important;
   }
 
   .type-action {
-    font-size: var(--type-action-size) !important;
-    line-height: var(--type-action-line) !important;
+    font-size: calc(var(--type-action-size) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-action-line) * var(--reader-scale)) !important;
     font-weight: var(--type-action-weight) !important;
   }
 
   input, select, textarea {
-    font-size: var(--type-body-size);
-    line-height: var(--type-label-line);
+    font-size: calc(var(--type-body-size) * var(--reader-scale));
+    line-height: calc(var(--type-label-line) * var(--reader-scale));
   }
 
   small, .type-meta {
-    font-size: var(--type-meta-size) !important;
-    line-height: var(--type-meta-line) !important;
+    font-size: calc(var(--type-meta-size) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-meta-line) * var(--reader-scale)) !important;
     font-weight: var(--type-meta-weight) !important;
   }
 
   .type-helper {
-    font-size: var(--type-helper-size) !important;
-    line-height: var(--type-helper-line) !important;
+    font-size: calc(var(--type-helper-size) * var(--reader-scale)) !important;
+    line-height: calc(var(--type-helper-line) * var(--reader-scale)) !important;
     font-weight: var(--type-helper-weight);
   }
 
   .type-compact {
-    font-size: var(--type-compact-size) !important;
+    font-size: calc(var(--type-compact-size) * var(--reader-scale)) !important;
   }
 
   /* Central Shape / Radius Utilities */
@@ -852,6 +857,13 @@
 
 .pt-safe {
   padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Let the mobile keyboard own the viewport while a text field is in focus. */
+@media (max-width: 767px) {
+  body:has(input:focus:not([readonly]), textarea:focus, [contenteditable="true"]:focus) .mobile-keyboard-sensitive {
+    display: none;
+  }
 }
 
 /* Additive safe-area utilities (base padding + safe inset) */
