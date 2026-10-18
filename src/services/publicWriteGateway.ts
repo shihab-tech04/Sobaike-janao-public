@@ -3,7 +3,7 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase';
 export type PublicWriteRequest =
   | {
       action: 'complaint';
-      submissionRpc: 'submit_public_complaint_v2';
+      submissionRpc: 'submit_public_complaint_v2' | 'submit_public_configured_complaint';
       payload: Record<string, unknown>;
       clientSubmissionId: string;
       reporterContext: object;

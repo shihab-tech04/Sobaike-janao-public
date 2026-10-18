@@ -2,6 +2,8 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { ReporterSubmissionContext, isValidReporterCoordinates } from './types';
 import { invokePublicWrite, uploadPublicEvidence } from './publicWriteGateway';
 import { VisitorSessionService } from './visitorSessionService';
+import { TaxonomyService } from './taxonomyService';
+import { publishedCustomAnswers, validateConfiguredAnswers } from './reportFormService';
 
 export interface ApiError {
   code: string;
@@ -202,16 +204,47 @@ class ApiClient {
 
     const hasImages = Array.isArray(images) && images.length > 0;
 
-    // Step 1: Submit complaint through the classification-aware wrapper.
-    // The existing authoritative submission function remains intact underneath this wrapper.
+    // The DB's published configuration is authoritative for both eligibility
+    // and the legacy-vs-schema submission route. Never guess from category IDs.
+    const subcategoryId = String(payload?.subcategoryId || '');
+    const form = TaxonomyService.getPublishedForm(subcategoryId);
+    if (!TaxonomyService.isPublishedConfigurationVerified() || !form) {
+      const formError: ApiError = {
+        code: 'REPORTING_CONFIGURATION_UNAVAILABLE',
+        message: 'The reporting form has changed or is unavailable. Your draft is preserved; please refresh.',
+        messageBn: 'রিপোর্ট ফর্মটি পরিবর্তিত হয়েছে বা পাওয়া যাচ্ছে না। আপনার খসড়া সংরক্ষিত আছে; অনুগ্রহ করে রিফ্রেশ করুন।',
+      };
+      throw formError;
+    }
+    const configured = form.engineMode === 'schema';
+    if (configured && subcategoryId === 'child_abduction_murder' && hasImages) {
+      const restrictedEvidence: ApiError = {
+        code: 'CHILD_SAFETY_FORM_RESTRICTED',
+        message: 'This child-safety form does not accept attachments. Remove attached files before submitting.',
+        messageBn: 'এই শিশু সুরক্ষা ফর্মে ছবি সংযুক্ত করা যায় না। জমা দেওয়ার আগে সংযুক্ত ফাইল সরান।',
+      };
+      throw restrictedEvidence;
+    }
+    if (configured && Object.keys(validateConfiguredAnswers(form, payload.customFieldAnswers || {})).length > 0) {
+      const validationError: ApiError = {
+        code: 'REPORTING_FORM_VALIDATION_FAILED',
+        message: 'Complete all required published form questions before submitting.',
+        messageBn: 'জমা দেওয়ার আগে প্রকাশিত ফর্মের সব প্রয়োজনীয় প্রশ্ন পূরণ করুন।',
+      };
+      throw validationError;
+    }
+
+    // Step 1: Route published schema forms to the server-side dynamic validator;
+    // keep all published legacy forms on their existing classification wrapper.
     const enrichedPayload = {
       ...payload,
+      customFieldAnswers: configured ? publishedCustomAnswers(form, payload.customFieldAnswers || {}) : undefined,
       reporterContext,
     };
 
     const { data, error } = await invokePublicWrite<PublicReportSubmissionResult>({
       action: 'complaint',
-      submissionRpc: 'submit_public_complaint_v2',
+      submissionRpc: configured ? 'submit_public_configured_complaint' : 'submit_public_complaint_v2',
       payload: enrichedPayload,
       clientSubmissionId,
       reporterContext,

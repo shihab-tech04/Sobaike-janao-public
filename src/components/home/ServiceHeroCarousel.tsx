@@ -35,7 +35,7 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
   className = '',
 }) => {
   const { language, openReportComposer } = useApp();
-  const { segments } = useTaxonomy();
+  const { segments, subcategories, publishedForms, isPublishedConfigurationVerified } = useTaxonomy();
   const { contentByKey, visibleKeys } = usePublicBanners();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -292,7 +292,9 @@ export const ServiceHeroCarousel: React.FC<ServiceHeroCarouselProps> = ({
           {slides.map((slide, index) => {
             const isActive = index === safeIndex;
             const content = contentByKey[slide.key] ?? CANONICAL_BANNER_CONTENT[slide.key];
-            const canSubmit = REPORT_FORM_SECTION_KEYS.includes(slide.key);
+            const canSubmit = isPublishedConfigurationVerified
+              ? (subcategories[slide.key] || []).some((subcategory) => Boolean(publishedForms[subcategory.id]))
+              : REPORT_FORM_SECTION_KEYS.includes(slide.key);
 
             return (
               <div

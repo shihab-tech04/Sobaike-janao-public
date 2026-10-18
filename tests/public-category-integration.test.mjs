@@ -68,22 +68,24 @@ test('published banner image URLs accept only safe local paths or an explicitly 
 });
 
 test('anonymous category reads remain scoped to active public taxonomy contracts', () => {
-  assert.match(taxonomy, /\.from\('segments'\)[\s\S]*?\.eq\('active', true\)/);
-  assert.match(taxonomy, /\.from\('subcategories'\)[\s\S]*?\.eq\('active', true\)/);
+  assert.match(taxonomy, /rpc\('get_public_reporting_configuration'\)/);
+  assert.match(taxonomy, /cachedPublishedForms = nextForms/);
+  assert.match(taxonomy, /isPublishedConfigurationVerified = false/);
   assert.doesNotMatch(taxonomy, /reporting_form_schemas|reporting_form_schema_fields/);
   assert.match(banners, /rpc\('get_public_site_banners'\)/);
   assert.doesNotMatch(banners, /\.from\('site_banners'\)/);
 });
 
-test('report composer exposes only the four categories with verified public form contracts', () => {
+test('report composer exposes published forms dynamically while retaining the four-category offline fallback', () => {
   assert.match(tokens, /export const REPORT_FORM_SECTION_KEYS: SectionKey\[\] = \[[\s\S]*?'harassment'[\s\S]*?'load_shedding'[\s\S]*?'extortion'[\s\S]*?'rickshaw'[\s\S]*?\];/);
   assert.match(composer, /REPORT_FORM_SECTION_KEYS\.includes\(service\.key\)/);
-  const serviceList = composer.match(/const allServices:[\s\S]*?= \[([\s\S]*?)\n  \];/)?.[1] ?? '';
-  assert.doesNotMatch(serviceList, /public_safety|road_transport|illegal_occupation/);
+  assert.match(composer, /SECTION_KEYS\.map\(\(key\)/);
+  assert.match(composer, /subcategories\[service\.key\][\s\S]*?publishedForms\[subcategory\.id\]/);
 });
 
-test('home hero keeps report actions on verified form categories without a new banner toggle', () => {
-  assert.match(carousel, /const canSubmit = REPORT_FORM_SECTION_KEYS\.includes\(slide\.key\)/);
+test('home hero keeps report actions on published form categories without a new banner toggle', () => {
+  assert.match(carousel, /const canSubmit = isPublishedConfigurationVerified/);
+  assert.match(carousel, /REPORT_FORM_SECTION_KEYS\.includes\(slide\.key\)/);
   assert.match(carousel, /action=\{canSubmit \? \{/);
   assert.match(carousel, /onClick: \(\) => openReportComposer\(slide\.key\)/);
   assert.doesNotMatch(carousel, /showHomeCta|navigateTo\(slide\.path\)/);

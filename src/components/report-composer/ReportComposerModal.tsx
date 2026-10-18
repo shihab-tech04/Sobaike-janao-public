@@ -504,6 +504,7 @@ export const ReportComposerModal: React.FC<ReportComposerModalProps> = ({
         evidenceTypes: [],
         evidenceDescription: '',
         subcategoryId: '',
+        customFieldAnswers: {},
         title: '',
         subjectType: 'unknown',
         reportedSubject: '',
@@ -573,6 +574,7 @@ export const ReportComposerModal: React.FC<ReportComposerModalProps> = ({
         return {
           ...prev,
           subcategoryId,
+          customFieldAnswers: {},
           clientSubmissionId: undefined,
           serverSubmissionState: 'not_attempted',
           pendingEvidenceRecovery: undefined,
@@ -857,7 +859,9 @@ export const ReportComposerModal: React.FC<ReportComposerModalProps> = ({
           };
 
       const isHarassment = formData.segment === 'harassment';
-      const isPartySegment = formData.segment === 'rickshaw' || formData.segment === 'extortion';
+      const isChildSafetyMinimal = formData.subcategoryId === 'child_abduction_murder';
+      const isPartySegment = formData.segment === 'rickshaw' || formData.segment === 'extortion'
+        || formData.subcategoryId === 'ride_sharing_safety';
       const isChargingStation = isPartySegment && formData.segment === 'rickshaw' && (formData.subcategoryId === 'charging-station-location' || !formData.subcategoryId);
 
       const resolvedReportedSubject = isChargingStation
@@ -871,6 +875,7 @@ export const ReportComposerModal: React.FC<ReportComposerModalProps> = ({
       const payload = {
         segment: formData.segment,
         subcategoryId: formData.subcategoryId,
+        customFieldAnswers: formData.customFieldAnswers || {},
         title: formData.title || '',
         description: formData.description || '',
         incidentDate:
@@ -878,11 +883,11 @@ export const ReportComposerModal: React.FC<ReportComposerModalProps> = ({
             ? formData.incidentDate || (formData.recentBillMonth ? `${formData.recentBillMonth}-01` : new Date().toISOString().split('T')[0])
             : formData.incidentDate || undefined,
         incidentTime:
-          formData.subcategoryId === 'excess-electricity-bill'
+          isChildSafetyMinimal || formData.subcategoryId === 'excess-electricity-bill'
             ? undefined
             : formData.incidentTime || undefined,
         utilityEndTime:
-          formData.subcategoryId === 'excess-electricity-bill'
+          isChildSafetyMinimal || formData.subcategoryId === 'excess-electricity-bill'
             ? undefined
             : formData.utilityEndTime || undefined,
         recentBillMonth: formData.subcategoryId === 'excess-electricity-bill' ? formData.recentBillMonth || undefined : undefined,
@@ -895,7 +900,7 @@ export const ReportComposerModal: React.FC<ReportComposerModalProps> = ({
           formData.subcategoryId === 'excess-electricity-bill' && formData.previousBillAmount !== undefined && formData.previousBillAmount !== null && String(formData.previousBillAmount).trim() !== ''
             ? Number(formData.previousBillAmount)
             : undefined,
-        frequency: formData.frequency || 'one-time',
+        frequency: isChildSafetyMinimal ? 'one-time' : (formData.frequency || 'one-time'),
         affectedPersonAgeGroup: isHarassment ? formData.affectedPersonAgeGroup || undefined : undefined,
         allegedAbuserRelationship: isHarassment ? formData.allegedAbuserRelationship || undefined : undefined,
         reportingFor: isHarassment ? formData.reportingFor || undefined : undefined,
@@ -932,9 +937,9 @@ export const ReportComposerModal: React.FC<ReportComposerModalProps> = ({
                 consentPublic: Boolean(formData.confirmPublicIdentity),
               }
             : undefined,
-        hasSupportingInfo: Boolean(formData.hasSupportingInfo || pendingImages.length > 0),
-        evidenceTypes: formData.evidenceTypes || [],
-        evidenceDescription: formData.evidenceDescription || undefined,
+        hasSupportingInfo: !isChildSafetyMinimal && Boolean(formData.hasSupportingInfo || pendingImages.length > 0),
+        evidenceTypes: isChildSafetyMinimal ? [] : (formData.evidenceTypes || []),
+        evidenceDescription: isChildSafetyMinimal ? undefined : (formData.evidenceDescription || undefined),
         website: (formData as any).website || '', // Honeypot anti-bot
       };
 

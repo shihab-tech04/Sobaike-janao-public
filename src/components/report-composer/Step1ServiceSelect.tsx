@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check, ArrowRight } from 'lucide-react';
-import { SectionKey, SECTIONS, COMING_SOON_SERVICES, ComingSoonServiceKey, REPORT_FORM_SECTION_KEYS } from '../../theme/tokens';
+import { SectionKey, SECTIONS, SECTION_KEYS, COMING_SOON_SERVICES, ComingSoonServiceKey, REPORT_FORM_SECTION_KEYS } from '../../theme/tokens';
 import { CategoryIcon } from '../branding/CategoryIcon';
 import { AppIcon } from '../ui/AppIcon';
 import { useTaxonomy } from '../../services/taxonomyService';
@@ -24,7 +24,7 @@ export const Step1ServiceSelect: React.FC<Step1ServiceSelectProps> = ({
   onNavigateToComingSoon,
   language,
 }) => {
-  const { segments } = useTaxonomy();
+  const { segments, subcategories, publishedForms, isPublishedConfigurationVerified } = useTaxonomy();
   const [internalComingSoon, setInternalComingSoon] = useState<ComingSoonServiceKey | null>(null);
 
   const selectedComingSoon =
@@ -40,55 +40,28 @@ export const Step1ServiceSelect: React.FC<Step1ServiceSelectProps> = ({
     textVar: string;
     borderVar: string;
     primaryVar: string;
-  }> = [
-    {
-      key: 'harassment',
-      titleBn: segments.harassment?.nameBn || SECTIONS.harassment.nameBn,
-      titleEn: segments.harassment?.nameEn || SECTIONS.harassment.nameEn,
-      descBn: 'যৌন হয়রানি, নির্যাতন, প্রতারণা বা অনলাইন হয়রানি সম্পর্কিত অভিযোগ।',
-      descEn: 'Report sexual harassment, abuse, relationship deception, or online harassment.',
-      bgVar: 'var(--sec-harassment-bg)',
-      textVar: 'var(--sec-harassment-text)',
-      borderVar: 'var(--sec-harassment-border)',
-      primaryVar: 'var(--sec-harassment-primary)',
-    },
-    {
-      key: 'rickshaw',
-      titleBn: segments.rickshaw?.nameBn || SECTIONS.rickshaw.nameBn,
-      titleEn: segments.rickshaw?.nameEn || SECTIONS.rickshaw.nameEn,
-      descBn: 'অবৈধ বা ঝুঁকিপূর্ণ চার্জিং স্টেশনের অবস্থান ও তথ্য দিন।',
-      descEn: 'Share the location and details of illegal or unsafe charging stations.',
-      bgVar: 'var(--sec-rickshaw-bg)',
-      textVar: 'var(--sec-rickshaw-text)',
-      borderVar: 'var(--sec-rickshaw-border)',
-      primaryVar: 'var(--sec-rickshaw-primary)',
-    },
-    {
-      key: 'extortion',
-      titleBn: segments.extortion?.nameBn || SECTIONS.extortion.nameBn,
-      titleEn: segments.extortion?.nameEn || SECTIONS.extortion.nameEn,
-      descBn: 'চাঁদা দাবি, জোরপূর্বক অর্থ আদায় বা চাপ প্রয়োগের ঘটনা জানান।',
-      descEn: 'Report extortion, coercive collections, or pressure.',
-      bgVar: 'var(--sec-extortion-bg)',
-      textVar: 'var(--sec-extortion-text)',
-      borderVar: 'var(--sec-extortion-border)',
-      primaryVar: 'var(--sec-extortion-primary)',
-    },
-    {
-      key: 'load_shedding',
-      titleBn: segments.load_shedding?.nameBn || SECTIONS.load_shedding.nameBn,
-      titleEn: segments.load_shedding?.nameEn || SECTIONS.load_shedding.nameEn,
-      descBn: 'লোডশেডিং, গ্যাস সংকট বা অতিরিক্ত বিদ্যুৎ বিল সংক্রান্ত অভিযোগ।',
-      descEn: 'Report load shedding, gas shortages, or excess electricity bill issues.',
-      bgVar: 'var(--sec-load_shedding-bg)',
-      textVar: 'var(--sec-load_shedding-text)',
-      borderVar: 'var(--sec-load_shedding-border)',
-      primaryVar: 'var(--sec-load_shedding-primary)',
-    },
-  ];
-  // Keep the composer limited to categories whose public form contract is readable and verified.
+  }> = SECTION_KEYS.map((key) => {
+    const section = segments[key] || SECTIONS[key];
+    return {
+      key,
+      titleBn: section.nameBn,
+      titleEn: section.nameEn,
+      descBn: section.descriptionBn,
+      descEn: section.descriptionEn,
+      bgVar: `var(--sec-${key}-bg)`,
+      textVar: `var(--sec-${key}-text)`,
+      borderVar: `var(--sec-${key}-border)`,
+      primaryVar: `var(--sec-${key}-primary)`,
+    };
+  });
+  // Never expose unpublished or disabled form routes. Offline fallback is the
+  // four historically verified legacy categories, not a fabricated schema.
   const activeServices = allServices.filter(
-    (service) => REPORT_FORM_SECTION_KEYS.includes(service.key) && Boolean(segments[service.key])
+    (service) => Boolean(segments[service.key]) && (
+      isPublishedConfigurationVerified
+        ? (subcategories[service.key] || []).some((subcategory) => Boolean(publishedForms[subcategory.id]))
+        : REPORT_FORM_SECTION_KEYS.includes(service.key)
+    )
   );
 
   const comingSoonList = Object.values(COMING_SOON_SERVICES).filter(

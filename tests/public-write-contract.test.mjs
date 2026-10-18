@@ -12,7 +12,7 @@ const [apiClient, visitorSession, gateway, publicEvidence, productionSmoke] = aw
 
 test('complaints and responses use the current public-write gateway contract', () => {
   assert.match(apiClient, /action: 'complaint'/);
-  assert.match(apiClient, /submissionRpc: 'submit_public_complaint_v2'/);
+  assert.match(apiClient, /submissionRpc: configured \? 'submit_public_configured_complaint' : 'submit_public_complaint_v2'/);
   assert.match(apiClient, /clientSubmissionId,/);
   assert.match(apiClient, /reporterContext,/);
   assert.match(apiClient, /action: 'response'/);

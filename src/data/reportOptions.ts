@@ -23,7 +23,7 @@ export const SEGMENT_SUBCATEGORIES: Record<SectionKey, SubcategoryOption[]> = {
     },
     {
       id: 'sexual-harassment',
-      nameBn: 'যৌন হয়রানি',
+      nameBn: 'যৌন হয়রানি',
       nameEn: 'Sexual Harassment',
       descriptionBn: 'অনাকাঙ্ক্ষিত যৌন আচরণ, মন্তব্য বা স্পর্শ',
       descriptionEn: 'Unwanted sexual behavior, comments or physical touch',
@@ -39,8 +39,8 @@ export const SEGMENT_SUBCATEGORIES: Record<SectionKey, SubcategoryOption[]> = {
     },
     {
       id: 'blackmail-coercion',
-      nameBn: 'ব্ল্যাকমেইলিং',
-      nameEn: 'Blackmailing',
+      nameBn: 'ব্ল্যাকমেইল / জবরদস্তি',
+      nameEn: 'Blackmailing / Coercion',
       descriptionBn: 'ব্যক্তিগত ছবি, ভিডিও বা তথ্য ব্যবহার করে ভয় দেখানো',
       descriptionEn: 'Blackmail or threats using photos, videos, or personal information',
       categoryGroup: 'digital_intimate',
@@ -58,13 +58,19 @@ export const SEGMENT_SUBCATEGORIES: Record<SectionKey, SubcategoryOption[]> = {
   rickshaw: [
     {
       id: 'charging-station-location',
-      nameBn: 'অবৈধ অটো চার্জিং',
-      nameEn: 'Illegal auto-rickshaw charging',
+      nameBn: 'অবৈধ অটো-রিকশা চার্জিং স্টেশন',
+      nameEn: 'Illegal Auto-rickshaw Charging Station',
       descriptionBn: 'অবৈধ বিদ্যুৎ সংযোগ বা অগ্নিঝুঁকিপূর্ণ ব্যাটারি চার্জিং স্পট',
       descriptionEn: 'Report illegal power connections or hazardous battery charging points',
     },
   ],
   extortion: [
+    {
+      id: 'bribe-demanded-service',
+      nameBn: 'ঘুষ',
+      nameEn: 'Bribery',
+      isSensitive: true,
+    },
     {
       id: 'shop-business',
       nameBn: 'দোকান ও ব্যবসা প্রতিষ্ঠানে চাঁদা দাবি',
@@ -124,9 +130,24 @@ export const SEGMENT_SUBCATEGORIES: Record<SectionKey, SubcategoryOption[]> = {
       descriptionEn: 'Abnormal, inflated or unexplained electricity bill charges',
     },
   ],
-  public_safety: [],
-  road_transport: [],
-  illegal_occupation: [],
+  public_safety: [
+    { id: 'theft', nameBn: 'চুরি', nameEn: 'Theft', isSensitive: true },
+    { id: 'robbery', nameBn: 'ডাকাতি', nameEn: 'Robbery / Dacoity', isSensitive: true },
+    { id: 'snatching', nameBn: 'ছিনতাই', nameEn: 'Snatching', isSensitive: true },
+    { id: 'mob-justice', nameBn: 'গণপিটুনি / মব সহিংসতা', nameEn: 'Mob Justice / Mob Violence', isSensitive: true },
+    { id: 'child_abduction_murder', nameBn: 'শিশু অপহরণ / হত্যা', nameEn: 'Child Abduction / Murder', categoryGroup: 'general', isSensitive: true },
+    { id: 'ride_sharing_safety', nameBn: 'রাইড-শেয়ারিং নিরাপত্তা', nameEn: 'Ride-sharing Safety', categoryGroup: 'general', isSensitive: true },
+  ],
+  road_transport: [
+    { id: 'road-repair-delay', nameBn: 'রাস্তা মেরামতে বিলম্ব', nameEn: 'Road Repair Delay' },
+    { id: 'road-accident', nameBn: 'সড়ক দুর্ঘটনা', nameEn: 'Road Accident', isSensitive: true },
+    { id: 'road-block', nameBn: 'সড়ক অবরোধ', nameEn: 'Road Block / Obstruction' },
+  ],
+  illegal_occupation: [
+    { id: 'road-public-space-encroachment', nameBn: 'রাস্তা / ফুটপাত / ফুটওভার ব্রিজ দখল', nameEn: 'Road / Footpath / Foot-over-bridge Encroachment' },
+    { id: 'private-property-occupation', nameBn: 'ব্যক্তিগত জমি/সম্পত্তি অবৈধ দখল', nameEn: 'Illegal Occupation of Private Land / Property', isSensitive: true },
+    { id: 'government-property-occupation', nameBn: 'সরকারি জমি/সম্পত্তি অবৈধ দখল', nameEn: 'Illegal Occupation of Government Land / Property', isSensitive: true },
+  ],
 };
 
 export const EVIDENCE_TYPES = [

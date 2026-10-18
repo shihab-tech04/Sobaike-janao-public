@@ -57,6 +57,8 @@ import {
   isGooglePlacesConfigured,
   ResolvedPlaceResult,
 } from '../../services/googlePlacesService';
+import { useTaxonomy } from '../../services/taxonomyService';
+import { getFieldOptions, getVisibleCustomFields, validateConfiguredAnswers } from '../../services/reportFormService';
 
 export interface Step3Handle {
   validateAndProceed: () => boolean;
@@ -128,9 +130,16 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
     ref
   ) => {
     const todayLocal = getLocalToday();
+    const { publishedForms, isPublishedConfigurationVerified, getSubcategories } = useTaxonomy();
+    const publishedForm = isPublishedConfigurationVerified ? publishedForms[formData.subcategoryId] : undefined;
+    const configuredFields = getVisibleCustomFields(publishedForm);
+    const isChildSafetyMinimal = formData.subcategoryId === 'child_abduction_murder' && publishedForm?.engineMode === 'schema';
 
     // Segment structure conditions
-    const showsPartySection = segment === 'rickshaw' || segment === 'extortion';
+    const showsRideSharingPartySection = formData.subcategoryId === 'ride_sharing_safety'
+      && publishedForm?.engineMode === 'schema'
+      && publishedForm.fields.some((field) => field.active && field.fieldType === 'subject_party');
+    const showsPartySection = segment === 'rickshaw' || segment === 'extortion' || showsRideSharingPartySection;
     const showsIdentitySection = segment === 'harassment';
     const isUtilityReport = (segment as string) === 'utility' || segment === 'load_shedding';
     const isLoadShedding = isUtilityReport && formData.subcategoryId === 'load-shedding-outage';
@@ -138,7 +147,7 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
     const isExcessElectricityBill = isUtilityReport && formData.subcategoryId === 'excess-electricity-bill';
 
     // Determine active subcategory option & context
-    const currentSubcategoryOption = (SEGMENT_SUBCATEGORIES[segment] || []).find(
+    const currentSubcategoryOption = (getSubcategories(segment) || SEGMENT_SUBCATEGORIES[segment] || []).find(
       (s) => s.id === formData.subcategoryId
     );
     const isDigitalHarassment =
@@ -150,8 +159,8 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
     const subjectConfig = getReportSubjectConfig(segment, formData.subcategoryId);
 
     // Conditional: hide frequency for Illegal Charging Station reports
-    const hideFrequency =
-      segment === 'rickshaw' && formData.subcategoryId === 'charging-station-location';
+    const hideFrequency = isChildSafetyMinimal ||
+      (segment === 'rickshaw' && formData.subcategoryId === 'charging-station-location');
 
     // Charging station unified operator party logic
     const isChargingStationOperator =
@@ -664,6 +673,14 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
     const validateAndProceed = (): boolean => {
       const newErrors: Record<string, string> = {};
 
+      if (publishedForm?.engineMode === 'schema') {
+        for (const [key, code] of Object.entries(validateConfiguredAnswers(publishedForm, formData.customFieldAnswers || {}))) {
+          newErrors[`custom_${key}`] = code === 'required'
+            ? (language === 'bn' ? 'এই তথ্যটি আবশ্যক।' : 'This field is required.')
+            : (language === 'bn' ? 'সঠিক তথ্য নির্বাচন করুন।' : 'Select or enter a valid value.');
+        }
+      }
+
       if (isUtilityReport) {
         // Auto-populate title if empty before validating
         let effectiveTitle = formData.title?.trim();
@@ -942,6 +959,7 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
         setErrors(newErrors);
 
         if (
+          Object.keys(newErrors).some((key) => key.startsWith('custom_')) ||
           newErrors.title ||
           newErrors.description ||
           newErrors.incidentDate ||
@@ -1464,6 +1482,46 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
               </div>
             </div>
 
+            {configuredFields.length > 0 && (
+              <div id="composer-configured-fields" className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-ui-stroke-subtle bg-ui-surface-subtle p-3.5">
+                {configuredFields.map((field) => {
+                  const id = `configured-field-${field.fieldKey}`;
+                  const value = String(formData.customFieldAnswers?.[field.storageKey] ?? '');
+                  const fieldLabel = language === 'bn' ? field.labelBn : field.labelEn;
+                  const error = errors[`custom_${field.storageKey}`];
+                  const setValue = (next: string) => {
+                    onUpdateFormData({
+                      customFieldAnswers: { ...(formData.customFieldAnswers || {}), [field.storageKey]: next },
+                    });
+                    if (error) setErrors((prev) => ({ ...prev, [`custom_${field.storageKey}`]: '' }));
+                  };
+                  const className = `w-full min-h-[44px] rounded-xl border bg-ui-surface px-3 py-2.5 text-[14px] text-ui-content-primary focus:outline-none focus:ring-2 focus:ring-ui-focus ${error ? 'border-ui-error-border' : 'border-ui-stroke-subtle'}`;
+                  return (
+                    <div key={field.fieldKey} className="space-y-1.5">
+                      <label htmlFor={id} className="block text-[13px] font-bold text-ui-content-primary">
+                        {fieldLabel}{field.required && <span className="ml-1 text-ui-validation-text">*</span>}
+                      </label>
+                      {(field.fieldType === 'select' || field.fieldType === 'radio') ? (
+                        <select id={id} value={value} onChange={(event) => setValue(event.target.value)} required={field.required} aria-invalid={Boolean(error)} className={className}>
+                          <option value="">{language === 'bn' ? 'নির্বাচন করুন' : 'Select an option'}</option>
+                          {getFieldOptions(field).map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {language === 'bn' ? option.labelBn : option.labelEn}
+                            </option>
+                          ))}
+                        </select>
+                      ) : field.fieldType === 'textarea' ? (
+                        <textarea id={id} value={value} onChange={(event) => setValue(event.target.value)} required={field.required} aria-invalid={Boolean(error)} className={className} rows={3} />
+                      ) : field.fieldType === 'text' ? (
+                        <input id={id} type="text" value={value} onChange={(event) => setValue(event.target.value)} required={field.required} aria-invalid={Boolean(error)} className={className} />
+                      ) : null}
+                      {error && <p role="alert" className="text-[12px] font-semibold text-ui-error-text">{error}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Incident Date, Time & Frequency */}
             <div className={`grid grid-cols-1 ${hideFrequency ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-3`}>
               <div>
@@ -1506,7 +1564,7 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
                 )}
               </div>
 
-              <div>
+              {!isChildSafetyMinimal && <div>
                 <label
                   htmlFor="complaint-time-input"
                   className="block text-[13px] font-bold text-ui-content-primary mb-1"
@@ -1523,7 +1581,7 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
                   onChange={(e) => onUpdateFormData({ incidentTime: e.target.value })}
                   className="w-full px-3 py-2 bg-ui-surface border border-ui-stroke-subtle rounded-xl text-[14px] text-ui-content-primary focus:outline-none focus:ring-2 focus:ring-ui-focus focus:border-ui-accent min-h-[42px]"
                 />
-              </div>
+              </div>}
 
               {!hideFrequency && (
                 <div>
@@ -2441,8 +2499,37 @@ export const Step3ComplaintDetails = forwardRef<Step3Handle, Step3ComplaintDetai
           </Accordion>
         )}
 
+        {showsRideSharingPartySection && (
+          <Accordion id="composer-section-parties" isOpen={Boolean(openSections.parties)} collapsible={true}
+            onToggle={() => toggleSection('parties')}
+            title={language === 'bn' ? 'সংশ্লিষ্ট ব্যক্তি / প্রতিষ্ঠান (ঐচ্ছিক)' : 'Related person / organization (optional)'}
+            summary={formData.reportedSubject || formData.organization || (language === 'bn' ? 'তথ্য দেওয়া হয়নি' : 'Not provided')}
+            icon={<Users className="w-5 h-5" />}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div>
+                <label htmlFor="rideshare-related-person" className="block text-[13px] font-bold text-ui-content-primary mb-1">
+                  {language === 'bn' ? 'ব্যক্তি / চালকের নাম (ঐচ্ছিক)' : 'Person / driver name (optional)'}
+                </label>
+                <input id="rideshare-related-person" type="text" maxLength={200}
+                  value={formData.reportedSubject || ''}
+                  onChange={(e) => onUpdateFormData({ reportedSubject: e.target.value })}
+                  className="w-full min-h-[44px] rounded-xl border border-ui-stroke-subtle bg-ui-surface px-3 text-ui-content-primary focus:outline-none focus:ring-2 focus:ring-ui-focus" />
+              </div>
+              <div>
+                <label htmlFor="rideshare-related-organization" className="block text-[13px] font-bold text-ui-content-primary mb-1">
+                  {language === 'bn' ? 'রাইড-শেয়ারিং প্রতিষ্ঠান (ঐচ্ছিক)' : 'Ride-sharing organization (optional)'}
+                </label>
+                <input id="rideshare-related-organization" type="text" maxLength={200}
+                  value={formData.organization || ''}
+                  onChange={(e) => onUpdateFormData({ organization: e.target.value })}
+                  className="w-full min-h-[44px] rounded-xl border border-ui-stroke-subtle bg-ui-surface px-3 text-ui-content-primary focus:outline-none focus:ring-2 focus:ring-ui-focus" />
+              </div>
+            </div>
+          </Accordion>
+        )}
+
         {/* SECTION 4: Attachments (সংযুক্তি - ঐচ্ছিক) - COLLAPSIBLE - Hidden for Load Shedding & Gas Shortage, enabled for Excess Electricity Bill */}
-        {(!isUtilityReport || isExcessElectricityBill) && (
+        {(!isUtilityReport || isExcessElectricityBill) && (!isChildSafetyMinimal || pendingImages.length > 0) && (
           <Accordion
             id="composer-section-attachments"
             isOpen={Boolean(openSections.attachments)}

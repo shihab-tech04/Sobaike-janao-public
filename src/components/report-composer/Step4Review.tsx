@@ -16,6 +16,8 @@ import { DraftReport, isMeaningfulMentionedParty } from '../../services/types';
 import { AttachedImagePreview } from '../media/ImageAttachmentPicker';
 import { AttachmentLightboxModal } from '../media/AttachmentLightboxModal';
 import { SEGMENT_SUBCATEGORIES } from '../../data/reportOptions';
+import { useTaxonomy } from '../../services/taxonomyService';
+import { getFieldOptions, getVisibleCustomFields } from '../../services/reportFormService';
 import {
   getReportSubjectConfig,
   getSubjectOptionLabel,
@@ -50,6 +52,8 @@ export const Step4Review: React.FC<Step4ReviewProps> = ({
   onEditStep,
   language,
 }) => {
+  const { getSubcategories, publishedForms, isPublishedConfigurationVerified } = useTaxonomy();
+  const configuredFields = getVisibleCustomFields(isPublishedConfigurationVerified ? publishedForms[formData.subcategoryId] : undefined);
   const isRickshawChargingStation =
     segment === 'rickshaw' &&
     (formData.subcategoryId === 'charging-station-location' || !formData.subcategoryId);
@@ -82,10 +86,12 @@ export const Step4Review: React.FC<Step4ReviewProps> = ({
 
   const showsPartySection =
     (segment === 'extortion' && hasExtortionPartyData) ||
-    (segment === 'rickshaw' && hasRickshawOperatorData);
+    (segment === 'rickshaw' && hasRickshawOperatorData) ||
+    (formData.subcategoryId === 'ride_sharing_safety'
+      && Boolean(formData.reportedSubject?.trim() || formData.organization?.trim()));
   const showsIdentitySection = segment === 'harassment';
 
-  const currentSubcategoryOption = (SEGMENT_SUBCATEGORIES[segment] || []).find(
+  const currentSubcategoryOption = (getSubcategories(segment) || SEGMENT_SUBCATEGORIES[segment] || []).find(
     (s) => s.id === formData.subcategoryId
   );
 
@@ -426,6 +432,25 @@ export const Step4Review: React.FC<Step4ReviewProps> = ({
                     {getBilingualOptionLabel(HARASSMENT_REPORTING_FOR_OPTIONS, formData.reportingFor, language) || '-'}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {configuredFields.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                {configuredFields.map((field) => {
+                  const raw = String(formData.customFieldAnswers?.[field.storageKey] || '');
+                  const selected = getFieldOptions(field).find((option) => option.value === raw);
+                  return (
+                    <div key={field.fieldKey} className="p-2.5 rounded-xl bg-ui-surface-subtle border border-ui-stroke-subtle">
+                      <span className="text-[12px] text-ui-content-muted block mb-0.5">
+                        {language === 'bn' ? field.labelBn : field.labelEn}
+                      </span>
+                      <p className="text-[13.5px] font-bold text-ui-content-primary">
+                        {selected ? (language === 'bn' ? selected.labelBn : selected.labelEn) : (raw || '-')}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

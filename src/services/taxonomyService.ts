@@ -47,6 +47,60 @@ export interface SegmentTaxonomyItem {
   sortOrder?: number;
 }
 
+/** Published forms are supplied by the server's filtered, anonymous-safe RPC. */
+export interface PublicPublishedFormField {
+  fieldKey: string;
+  fieldType: string;
+  storageMode: 'core_column' | 'custom_json' | 'system_block';
+  storageKey: string;
+  labelEn: string;
+  labelBn: string;
+  helperEn?: string | null;
+  helperBn?: string | null;
+  placeholderEn?: string | null;
+  placeholderBn?: string | null;
+  required: boolean;
+  active: boolean;
+  sortOrder: number;
+  options?: unknown;
+  validation?: unknown;
+  config?: unknown;
+}
+
+export interface PublicPublishedForm {
+  subcategoryId: string;
+  schemaId: string;
+  version: number;
+  engineMode: 'legacy' | 'schema';
+  fields: PublicPublishedFormField[];
+}
+
+interface PublicReportingConfiguration {
+  segments: Array<{
+    id: string;
+    slug: string;
+    nameEn: string;
+    nameBn: string;
+    shortNameEn?: string;
+    shortNameBn?: string;
+    descriptionEn?: string;
+    descriptionBn?: string;
+    sortOrder: number;
+  }>;
+  subcategories: Array<{
+    id: string;
+    segmentId: string;
+    nameEn: string;
+    nameBn: string;
+    descriptionEn?: string;
+    descriptionBn?: string;
+    categoryGroup?: SubcategoryOption['categoryGroup'];
+    isSensitive?: boolean;
+    sortOrder: number;
+  }>;
+  forms: PublicPublishedForm[];
+}
+
 // In-memory cache initialized with robust local fallbacks until a successful backend read
 let cachedSegments: Record<string, SegmentTaxonomyItem> = {
   harassment: { ...SECTIONS.harassment, id: 'harassment' },
@@ -67,6 +121,8 @@ let cachedSubcategories: Record<string, SubcategoryOption[]> = {
   illegal_occupation: [...SEGMENT_SUBCATEGORIES.illegal_occupation],
   rickshaw: [...SEGMENT_SUBCATEGORIES.rickshaw],
 };
+let cachedPublishedForms: Record<string, PublicPublishedForm> = {};
+let isPublishedConfigurationVerified = false;
 
 let isFetched = false;
 let isFetching = false;
@@ -213,7 +269,9 @@ export const TaxonomyService = {
   },
 
   /**
-   * Fetch all taxonomy data (both segments and subcategories) and notify subscribers.
+   * Read one atomic, published-only Public configuration snapshot. Direct form
+   * tables deny client access; this RPC joins active categories/subcategories,
+   * excluding disabled drafts even if historical form rows are still published.
    */
   async fetchTaxonomy(): Promise<{
     segments: Record<string, SegmentTaxonomyItem>;
@@ -225,11 +283,80 @@ export const TaxonomyService = {
 
     isFetching = true;
     try {
-      await Promise.all([this.fetchSegments(), this.fetchSubcategories()]);
-      isFetched = true;
-      notifyListeners();
+      if (isSupabaseConfigured() && supabase) {
+        const { data, error } = await supabase.rpc('get_public_reporting_configuration');
+        if (error) throw error;
+        const configuration = data as PublicReportingConfiguration;
+        if (!configuration
+          || !Array.isArray(configuration.segments)
+          || !Array.isArray(configuration.subcategories)
+          || !Array.isArray(configuration.forms)) {
+          throw new Error('Invalid public reporting configuration response.');
+        }
+
+        const nextSegments: Record<string, SegmentTaxonomyItem> = {};
+        for (const row of configuration.segments) {
+          if (!SECTION_KEYS.includes(row.id as SectionKey)) continue;
+          const key = row.id as SectionKey;
+          const fallback = SECTIONS[key];
+          nextSegments[key] = {
+            ...fallback,
+            id: key,
+            slug: row.slug ? `/${row.slug.replace(/^\/+/, '')}` : fallback.slug,
+            nameEn: row.nameEn || fallback.nameEn,
+            nameBn: row.nameBn || fallback.nameBn,
+            shortNameEn: row.shortNameEn || fallback.shortNameEn,
+            shortNameBn: row.shortNameBn || fallback.shortNameBn,
+            descriptionEn: row.descriptionEn || fallback.descriptionEn,
+            descriptionBn: row.descriptionBn || fallback.descriptionBn,
+            sortOrder: Number.isInteger(row.sortOrder) ? row.sortOrder : SECTION_KEYS.indexOf(key) + 1,
+          };
+        }
+        if (Object.keys(nextSegments).length === 0) {
+          throw new Error('Public reporting configuration contains no recognized active category.');
+        }
+
+        const nextSubcategories: Record<string, SubcategoryOption[]> = {};
+        for (const key of Object.keys(nextSegments)) nextSubcategories[key] = [];
+        for (const row of configuration.subcategories) {
+          if (!nextSegments[row.segmentId] || !row.id) continue;
+          nextSubcategories[row.segmentId].push({
+            id: row.id,
+            nameEn: row.nameEn || row.id,
+            nameBn: row.nameBn || row.id,
+            descriptionEn: row.descriptionEn || undefined,
+            descriptionBn: row.descriptionBn || undefined,
+            categoryGroup: row.categoryGroup || undefined,
+            isSensitive: row.isSensitive === true,
+          });
+        }
+
+        const activeIds = new Set(configuration.subcategories
+          .filter((row) => Boolean(nextSegments[row.segmentId]))
+          .map((row) => row.id));
+        const nextForms: Record<string, PublicPublishedForm> = {};
+        for (const form of configuration.forms) {
+          if (!activeIds.has(form.subcategoryId) || !form.schemaId) continue;
+          if (form.engineMode !== 'legacy' && form.engineMode !== 'schema') continue;
+          if (!Array.isArray(form.fields)) continue;
+          nextForms[form.subcategoryId] = form;
+        }
+
+        // Publish the three caches together so the composer never mixes revisions.
+        cachedSegments = nextSegments;
+        cachedSubcategories = nextSubcategories;
+        cachedPublishedForms = nextForms;
+        isPublishedConfigurationVerified = true;
+      }
+    } catch (err) {
+      // Keep the last known view for discovery, but never mark its forms verified.
+      isPublishedConfigurationVerified = false;
+      cachedPublishedForms = {};
+      console.warn('[TaxonomyService] Published configuration not available:', err);
     } finally {
+      isFetched = true;
       isFetching = false;
+      notifyListeners();
     }
 
     return { segments: cachedSegments, subcategories: cachedSubcategories };
@@ -276,6 +403,18 @@ export const TaxonomyService = {
     return cachedSubcategories;
   },
 
+  getPublishedForms(): Record<string, PublicPublishedForm> {
+    return cachedPublishedForms;
+  },
+
+  getPublishedForm(subcategoryId: string): PublicPublishedForm | undefined {
+    return cachedPublishedForms[subcategoryId];
+  },
+
+  isPublishedConfigurationVerified(): boolean {
+    return isPublishedConfigurationVerified;
+  },
+
   /**
    * Subscribe to taxonomy updates.
    */
@@ -315,6 +454,8 @@ export function useTaxonomy() {
   return {
     segments: TaxonomyService.getSegments(),
     subcategories: TaxonomyService.getAllSubcategories(),
+    publishedForms: TaxonomyService.getPublishedForms(),
+    isPublishedConfigurationVerified: TaxonomyService.isPublishedConfigurationVerified(),
     getSubcategories: (segment: SectionKey) => TaxonomyService.getSubcategories(segment),
     getFeedSubcategories: (segment: SectionKey) => TaxonomyService.getFeedSubcategories(segment),
     getSegment: (key: SectionKey) => TaxonomyService.getSegment(key),

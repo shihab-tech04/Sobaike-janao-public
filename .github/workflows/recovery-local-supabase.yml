@@ -110,3 +110,8 @@ jobs:
           RECOVERY_BROWSER_APP: public
           RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:3000
         run: node tests/recovery-browser-smoke.mjs
+
+      - name: Check synthetic seven-category published-form browser journeys
+        env:
+          RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:3000
+        run: node tests/recovery-form-browser-smoke.mjs

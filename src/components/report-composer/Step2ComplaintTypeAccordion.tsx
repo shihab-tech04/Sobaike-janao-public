@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Info } from 'lucide-react';
-import { SectionKey, SECTIONS } from '../../theme/tokens';
+import { SectionKey, SECTIONS, REPORT_FORM_SECTION_KEYS } from '../../theme/tokens';
 import { SubcategoryOption } from '../../data/reportOptions';
 import { useTaxonomy } from '../../services/taxonomyService';
 
@@ -19,8 +19,13 @@ export const Step2ComplaintTypeAccordion: React.FC<Step2ComplaintTypeAccordionPr
   onSelectSubcategory,
   language,
 }) => {
-  const { getSubcategories, getSegment } = useTaxonomy();
-  const allSubcategories = useMemo(() => getSubcategories(segment), [segment, getSubcategories]);
+  const { getSubcategories, getSegment, publishedForms, isPublishedConfigurationVerified } = useTaxonomy();
+  const allSubcategories = useMemo(
+    () => getSubcategories(segment).filter((item) => isPublishedConfigurationVerified
+      ? Boolean(publishedForms[item.id])
+      : REPORT_FORM_SECTION_KEYS.includes(segment)),
+    [segment, getSubcategories, publishedForms, isPublishedConfigurationVerified]
+  );
   const segmentInfo = getSegment(segment);
 
   const isSingleOption = allSubcategories.length === 1;
