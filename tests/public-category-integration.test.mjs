@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import test from 'node:test';
 import { normalizePublishedBannerRows } from '../src/services/publicBannerMapper.mjs';
 
@@ -65,6 +65,23 @@ test('published banner image URLs accept only safe local paths or an explicitly 
     { category_key: 'harassment', content: { isActive: true, showOnHome: true, illustrationSrc: '//trusted.example/hero.png' } },
   ], fallback, ['https://trusted.example']);
   assert.equal(rejected.contentByKey.harassment.illustrationSrc, '/fallback.png');
+
+  const legacy = normalizePublishedBannerRows([
+    { category_key: 'harassment', content: { isActive: true, showOnHome: true, illustrationSrc: 'https://shihabshajib01-cell.github.io/sobaike-janao/illustrations/services/harassment-hero-public-harassment-v02.jpg' } },
+  ], fallback);
+  assert.equal(legacy.contentByKey.harassment.illustrationSrc, '/fallback.png');
+});
+
+test('every canonical public banner uses an actually packaged, non-legacy illustration', async () => {
+  const source = await readFile(new URL('../src/data/bannerContent.ts', import.meta.url), 'utf8');
+  const paths = [...source.matchAll(/illustrationSrc:\s*'([^']+)'/g)].map((match) => match[1]);
+  assert.equal(paths.length, activeKeys.length);
+  assert.equal(new Set(paths).size, activeKeys.length);
+  for (const path of paths) {
+    assert.match(path, /^\/illustrations\/services\/[a-z0-9-]+\.(jpg|webp|avif)$/);
+    const file = await stat(new URL(`../public${path}`, import.meta.url));
+    assert.ok(file.size > 10_000, `missing/empty banner illustration: ${path}`);
+  }
 });
 
 test('anonymous category reads remain scoped to active public taxonomy contracts', () => {

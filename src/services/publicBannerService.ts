@@ -7,8 +7,6 @@ import {
   PublishedBannerSet,
 } from './publicBannerMapper.mjs';
 
-const TRUSTED_BANNER_ORIGINS = ['https://shihabshajib01-cell.github.io'];
-
 let publishedCache: PublishedBannerSet | null = null;
 let publishedRequest: Promise<PublishedBannerSet | null> | null = null;
 
@@ -28,8 +26,7 @@ export const PublicBannerService = {
 
         const normalized = normalizePublishedBannerRows(
           data,
-          CANONICAL_BANNER_CONTENT,
-          TRUSTED_BANNER_ORIGINS
+          CANONICAL_BANNER_CONTENT
         );
         publishedCache = normalized;
         return normalized;
