@@ -185,6 +185,46 @@ try {
     }
     assert.equal(await ridePage.locator('#configured-field-rideshare_trip_id').count(), 0,
       `${language}: unpublished/hidden trip ID must not appear`);
+
+    // Phase 06: exercise the frozen picker, genuine browser canvas WebP
+    // conversion, IndexedDB draft persistence, safe preview, and removal.
+    const attachments = ridePage.locator('#composer-section-attachments');
+    await attachments.locator('#composer-section-attachments-header').click();
+    const fileInput = attachments.locator('input[type="file"]');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==', 'base64');
+    await fileInput.setInputFiles({ name: 'phase06-synthetic.png', mimeType: 'image/png', buffer: png });
+    await attachments.getByRole('button', {
+      name: language === 'bn' ? 'ছবি 1 বড় করে দেখুন' : 'Expand image 1',
+    }).waitFor({ state: 'visible' });
+    await ridePage.waitForFunction(async () => {
+      const request = indexedDB.open('sobaike_evidence_store_v1');
+      const db = await new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const tx = db.transaction('pending_evidence', 'readonly');
+      const all = tx.objectStore('pending_evidence').getAll();
+      const rows = await new Promise((resolve, reject) => {
+        all.onsuccess = () => resolve(all.result);
+        all.onerror = () => reject(all.error);
+      });
+      db.close();
+      return rows.some((row) => row.mimeType === 'image/webp');
+    });
+    const preparedMime = await attachments.locator('img[alt="Selected 1"]').evaluate(async (img) => {
+      const response = await fetch(img.src);
+      return response.headers.get('content-type');
+    });
+    assert.equal(preparedMime, 'image/webp', `${language}: visible evidence preview must be sanitized WebP`);
+    await attachments.getByRole('button', {
+      name: language === 'bn' ? 'ছবি 1 বড় করে দেখুন' : 'Expand image 1',
+    }).click();
+    await ridePage.keyboard.press('Escape');
+    await attachments.getByRole('button', {
+      name: language === 'bn' ? 'ছবি 1 মুছুন' : 'Remove image 1',
+    }).click();
+    assert.equal(await attachments.locator('img[alt="Selected 1"]').count(), 0,
+      `${language}: removing evidence must clear its preview`);
     await ridePage.close();
   }
   console.log('Synthetic 7-category/27-form Public browser matrix passed in BN/EN, including both dynamic schemas; no live write attempted.');

@@ -162,8 +162,52 @@ async function submitSyntheticReport() {
   assert.equal(evidence.json.code, 'INVALID_WEBP', 'invalid WebP bytes must never be stored');
   console.log('PASS: invalid evidence bytes rejected by local sanitizer');
 
+  // A formerly permissive Storage INSERT policy could be used from any browser
+  // to bypass the Edge byte sanitizer with a forged image/webp content type.
+  // The anonymous path must fail even for a valid, currently submitted ID.
+  const forgedStoragePath = `public-submissions/${submissionId}/evidence-forged.webp`;
+  const directUpload = await fetch(`${api}/storage/v1/object/complaint-evidence/${forgedStoragePath}`, {
+    method: 'POST',
+    headers: { ...baseHeaders, 'content-type': 'image/webp', 'x-upsert': 'false' },
+    body: '<svg xmlns="http://www.w3.org/2000/svg"><script>bad()</script></svg>',
+    signal: AbortSignal.timeout(25_000),
+  });
+  assert.equal(directUpload.ok, false,
+    `anonymous direct Storage upload bypassed WebP sanitization: HTTP ${directUpload.status}`);
+
+  // The authorized rate-limited Edge gateway still accepts a real decodable
+  // two-pixel WebP, strips its metadata and registers the private object.
+  const tinyWebp = Buffer.from(
+    'UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoCAAIAAkA8JaACdLoB+AADsAD+8Bvf/xZyMR2eb/8Ka+FNfCmv+ECAAAA=',
+    'base64',
+  );
+  const legitimate = new FormData();
+  legitimate.append('clientSubmissionId', submissionId);
+  legitimate.append('file', new Blob([tinyWebp], { type: 'image/webp' }), '../unsafe-name.svg');
+  const uploaded = await endpoint('public-evidence-upload', legitimate);
+  assert.equal(uploaded.status, 200,
+    `valid sanitized Edge upload must succeed: ${JSON.stringify(uploaded.json)}`);
+  assert.equal(uploaded.json.success, true);
+  const storagePath = uploaded.json.evidence?.storagePath;
+  assert.match(storagePath, new RegExp(`^public-submissions/${submissionId}/evidence-[a-f0-9]{32}\\.webp$`));
+  assert.equal(uploaded.json.evidence?.width, 2);
+  assert.equal(uploaded.json.evidence?.height, 2);
+
+  const retryUpload = await endpoint('public-evidence-upload', legitimate);
+  assert.equal(retryUpload.status, 200,
+    `a duplicate sanitized upload must be idempotent: ${JSON.stringify(retryUpload.json)}`);
+  assert.equal(retryUpload.json.success, true);
+  assert.equal(retryUpload.json.evidence?.storagePath, storagePath);
+
+  const earlyRead = await fetch(`${api}/storage/v1/object/authenticated/complaint-evidence/${storagePath}`, {
+    headers: baseHeaders, signal: AbortSignal.timeout(25_000),
+  });
+  assert.equal(earlyRead.ok, false, 'anonymous visitors must not fetch unmoderated private evidence');
+  console.log('PASS: anon forged Storage bypass denied, real Edge WebP registered idempotently, draft evidence private');
+
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(process.env.GITHUB_OUTPUT, `synthetic_report_id=${id}\n`);
+    appendFileSync(process.env.GITHUB_OUTPUT, `synthetic_evidence_path=${storagePath}\n`);
   }
 }
 

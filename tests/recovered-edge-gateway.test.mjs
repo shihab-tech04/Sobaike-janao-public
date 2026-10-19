@@ -154,19 +154,29 @@ function syntheticWebP(extraChunks = []) {
   return Buffer.concat([header, body]);
 }
 
-test('the recovered WebP sanitizer strips EXIF/XMP and rejects invalid/animated containers', () => {
+test('the recovered WebP sanitizer strips EXIF/GPS/XMP/ICC and rejects hostile containers', () => {
   const dirty = syntheticWebP([
-    chunk('EXIF', Buffer.from('private-coordinate-metadata')),
+    chunk('EXIF', Buffer.from('GPSLatitude:23.76, GPSLongitude:90.39')),
     chunk('XMP ', Buffer.from('untrusted-image-metadata')),
+    chunk('ICCP', Buffer.from('color-profile-private-data')),
+    chunk('BAD!', Buffer.from('unknown-metadata-chunk')),
   ]);
   const sanitized = sanitizeEvidenceWebP(dirty);
-  assert.deepEqual(sanitized.removedChunks, ['EXIF', 'XMP']);
+  assert.deepEqual(sanitized.removedChunks, ['EXIF', 'XMP', 'ICCP', 'BAD!']);
   assert.equal(sanitized.width, 1);
   assert.equal(sanitized.height, 1);
-  assert.equal(Buffer.from(sanitized.bytes).includes(Buffer.from('private-coordinate-metadata')), false);
+  assert.equal(Buffer.from(sanitized.bytes).includes(Buffer.from('GPSLatitude')), false);
   assert.equal(Buffer.from(sanitized.bytes).includes(Buffer.from('untrusted-image-metadata')), false);
+  assert.equal(Buffer.from(sanitized.bytes).includes(Buffer.from('color-profile-private-data')), false);
+  assert.equal(Buffer.from(sanitized.bytes).includes(Buffer.from('unknown-metadata-chunk')), false);
   assert.equal(sanitized.bytes.length < dirty.length, true);
 
   assert.throws(() => sanitizeEvidenceWebP(Buffer.from('not-a-webp')), /INVALID_WEBP_CONTAINER/);
   assert.throws(() => sanitizeEvidenceWebP(syntheticWebP([chunk('ANIM', Buffer.alloc(6))])), /ANIMATED_WEBP_NOT_ALLOWED/);
+  assert.throws(() => sanitizeEvidenceWebP(syntheticWebP([chunk('ANMF', Buffer.alloc(6))])), /ANIMATED_WEBP_NOT_ALLOWED/);
+  assert.throws(() => sanitizeEvidenceWebP(syntheticWebP([chunk('VP8L', Uint8Array.of(0x2f,0,0,0,0))])), /MULTIPLE_WEBP_BITSTREAMS_NOT_ALLOWED/);
+  assert.throws(() => sanitizeEvidenceWebP(syntheticWebP(), { maxDimension: 0.5 }), /WEBP_DIMENSIONS_OUT_OF_RANGE/);
+  const invalidLength = Buffer.from(syntheticWebP());
+  invalidLength.writeUInt32LE(0, 4);
+  assert.throws(() => sanitizeEvidenceWebP(invalidLength), /INVALID_WEBP_RIFF_SIZE/);
 });
