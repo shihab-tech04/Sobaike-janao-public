@@ -26,6 +26,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   for (const [width, locale] of [[390, 'bn'], [390, 'en'], [1440, 'bn'], [1440, 'en']]) {
     const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+    page.on('pageerror', (error) => console.error(`PHASE08_PAGE_ERROR ${width}/${locale}: ${error.stack}`));
     const headers = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'POST, OPTIONS',
       'access-control-allow-headers': 'authorization, apikey, x-client-info, content-type' };
     await page.route('**/rest/v1/rpc/*', async (route) => {
@@ -40,8 +41,13 @@ try {
       await route.fulfill({ status: 200, contentType: 'image/png',
         body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLqzgAAAABJRU5ErkJggg==', 'base64') });
     });
-    await page.goto(new URL('/explore', baseUrl).href, { waitUntil: 'domcontentloaded' });
-    await page.locator('#explore-page-container').waitFor({ state: 'visible' });
+    const nav = await page.goto(new URL('/explore', baseUrl).href, { waitUntil: 'domcontentloaded' });
+    try {
+      await page.locator('#explore-page-container').waitFor({ state: 'visible', timeout: 8000 });
+    } catch (error) {
+      console.error(`PHASE08_EXPLORE_DIAGNOSTIC status=${nav?.status()} url=${page.url()} body=${(await page.locator('body').innerText()).slice(0, 1600)}`);
+      throw error;
+    }
     const notice = page.locator('#first-visit-notice-modal');
     if (await notice.isVisible()) {
       await page.locator('label[for="first-visit-ack-checkbox"]').click();
