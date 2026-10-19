@@ -115,10 +115,27 @@ try {
     assert.equal(await select.locator('option').count(), 3, `${language}: only published options plus placeholder`);
     await select.selectOption('abduction');
     assert.equal(await select.inputValue(), 'abduction');
+    // Sep 04 approved draft-recovery/idempotency behavior: an interrupted
+    // reporting session must restore its same published form answers.
+    await page.waitForFunction(() => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('sobaike_janao_draft_report') || 'null');
+        return stored?.customFieldAnswers?.childIncidentType === 'abduction';
+      } catch { return false; }
+    });
     assert.equal(await page.locator('[id^="subcategory-option-bribe-paid"]').count(), 0);
     assert.ok(configurationRequests > 0, `${language}: the browser loaded the atomic published configuration`);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(overflow <= 1, `${language}: no horizontal overflow; got ${overflow}px`);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#home-feed-section').waitFor({ state: 'visible' });
+    await page.locator('#bottom-nav-report').click();
+    await page.locator('#draft-recovery-continue-btn').waitFor({ state: 'visible' });
+    await page.locator('#draft-recovery-continue-btn').click();
+    const restoredSelect = page.locator('#configured-field-child_incident_type');
+    await restoredSelect.waitFor({ state: 'visible' });
+    assert.equal(await restoredSelect.inputValue(), 'abduction',
+      `${language}: approved local draft must retain published answers after refresh`);
     await page.close();
 
     // Verify the second real schema-driven route independently, including
