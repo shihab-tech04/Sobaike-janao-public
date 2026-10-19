@@ -52,7 +52,7 @@ export const Step4Review: React.FC<Step4ReviewProps> = ({
   onEditStep,
   language,
 }) => {
-  const { getSubcategories, publishedForms, isPublishedConfigurationVerified } = useTaxonomy();
+  const { getSubcategories, getSegment, publishedForms, isPublishedConfigurationVerified } = useTaxonomy();
   const configuredFields = getVisibleCustomFields(isPublishedConfigurationVerified ? publishedForms[formData.subcategoryId] : undefined);
   const isRickshawChargingStation =
     segment === 'rickshaw' &&
@@ -123,7 +123,7 @@ export const Step4Review: React.FC<Step4ReviewProps> = ({
 
   // Computed Summaries for Collapsed states
   const serviceTypeSummary = `${
-    SECTIONS[segment] ? (language === 'bn' ? SECTIONS[segment].nameBn : SECTIONS[segment].nameEn) : ''
+    language === 'bn' ? getSegment(segment).nameBn : getSegment(segment).nameEn
   } · ${
     currentSubcategoryOption
       ? language === 'bn'
@@ -266,7 +266,7 @@ export const Step4Review: React.FC<Step4ReviewProps> = ({
                 {language === 'bn' ? 'বিভাগ / সেবা' : 'Service Domain'}
               </span>
               <p className="text-[14.5px] font-bold text-ui-content-primary">
-                {language === 'bn' ? SECTIONS[segment].nameBn : SECTIONS[segment].nameEn}
+                {language === 'bn' ? getSegment(segment).nameBn : getSegment(segment).nameEn}
               </p>
             </div>
 

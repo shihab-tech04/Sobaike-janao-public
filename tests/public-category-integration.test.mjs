@@ -76,11 +76,14 @@ test('anonymous category reads remain scoped to active public taxonomy contracts
   assert.doesNotMatch(banners, /\.from\('site_banners'\)/);
 });
 
-test('report composer exposes published forms dynamically while retaining the four-category offline fallback', () => {
+test('report composer exposes every server-published category with a form, retaining the four-category offline fallback', () => {
   assert.match(tokens, /export const REPORT_FORM_SECTION_KEYS: SectionKey\[\] = \[[\s\S]*?'harassment'[\s\S]*?'load_shedding'[\s\S]*?'extortion'[\s\S]*?'rickshaw'[\s\S]*?\];/);
   assert.match(composer, /REPORT_FORM_SECTION_KEYS\.includes\(service\.key\)/);
-  assert.match(composer, /SECTION_KEYS\.map\(\(key\)/);
+  assert.match(composer, /Object\.keys\(segments\)\.sort/);
+  assert.match(composer, /: SECTION_KEYS\)\.map\(\(key\)/);
   assert.match(composer, /subcategories\[service\.key\][\s\S]*?publishedForms\[subcategory\.id\]/);
+  assert.match(taxonomy, /fallbackForSegment\(key\)/);
+  assert.doesNotMatch(taxonomy, /SECTION_KEYS\.includes\(row\.id as SectionKey\)\) continue/);
 });
 
 test('home hero keeps report actions on published form categories without a new banner toggle', () => {

@@ -229,8 +229,59 @@ try {
     assert.equal(await attachments.locator('img[alt="Selected 1"]').count(), 0,
       `${language}: removing evidence must clear its preview`);
     await ridePage.close();
+
+    // Phase 11: a genuinely new published category (not in SECTION_KEYS)
+    // must flow through the public service selector and bilingual form route.
+    const additionalConfig = {
+      segments: [...config.segments, {
+        id: 'synthetic_new_service', slug: 'synthetic-new-service',
+        nameEn: 'Synthetic new service', nameBn: 'পরীক্ষামূলক নতুন সেবা',
+        shortNameEn: 'New service', shortNameBn: 'নতুন সেবা',
+        descriptionEn: 'Controlled fixture', descriptionBn: 'শুধু পরীক্ষার তথ্য', sortOrder: 8,
+      }],
+      subcategories: [...config.subcategories, {
+        id: 'synthetic_form_draft', segmentId: 'synthetic_new_service',
+        nameEn: 'Synthetic issue', nameBn: 'পরীক্ষামূলক সমস্যা', sortOrder: 1,
+      }],
+      forms: [...config.forms, {
+        subcategoryId: 'synthetic_form_draft', schemaId: 'synthetic-new-schema', version: 1,
+        engineMode: 'schema', fields: [configuredField('witness_type', 'witness_type', [
+          { value: 'nearby', labelEn: 'Nearby witness', labelBn: 'নিকটবর্তী সাক্ষী' },
+        ])],
+      }],
+    };
+    const newPage = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    await newPage.route('**/rest/v1/rpc/get_public_reporting_configuration', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json',
+        body: route.request().method() === 'OPTIONS' ? '' : JSON.stringify(additionalConfig),
+        headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'POST, OPTIONS',
+          'access-control-allow-headers': 'authorization, apikey, x-client-info, content-type' },
+      });
+    });
+    await newPage.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+    await newPage.locator('#home-feed-section').waitFor({ state: 'visible' });
+    const intro = newPage.locator('#first-visit-notice-modal');
+    if (await intro.isVisible()) {
+      await newPage.locator('label[for="first-visit-ack-checkbox"]').click();
+      await newPage.locator('#first-visit-acknowledge-btn').click();
+    }
+    const locationModal = newPage.locator('#location-consent-modal');
+    if (await locationModal.isVisible()) await newPage.getByRole('button', { name: 'এখন নয়', exact: true }).click();
+    await newPage.locator('#bottom-nav-report').click();
+    await newPage.locator('#service-select-card-synthetic_new_service').waitFor({ state: 'visible' });
+    assert.equal(await newPage.locator('[id^="service-select-card-"]').count(), 8,
+      `${language}: newly published SQL category extends the static seven`);
+    await newPage.locator('#service-select-card-synthetic_new_service').click();
+    await newPage.locator('#composer-footer-step1-next-btn').click();
+    await newPage.locator('#subcategory-option-synthetic_form_draft').click();
+    await newPage.locator('#composer-footer-step2-next-btn').click();
+    await newPage.locator('#configured-field-witness_type').waitFor({ state: 'visible' });
+    await newPage.locator('#configured-field-witness_type').selectOption('nearby');
+    assert.equal(await newPage.locator('#configured-field-witness_type').inputValue(), 'nearby');
+    assert.match(await newPage.locator('body').innerText(), /Synthetic new service|পরীক্ষামূলক নতুন সেবা/);
+    await newPage.close();
   }
-  console.log('Synthetic 7-category/27-form Public browser matrix passed in BN/EN, including both dynamic schemas; no live write attempted.');
+  console.log('Synthetic 7-category/27-form plus newly published eighth-category Public browser matrix passed in BN/EN; no live write attempted.');
 } finally {
   await browser.close();
 }

@@ -3,6 +3,7 @@ import { X, Check } from 'lucide-react';
 import { SectionKey, SECTIONS } from '../../theme/tokens';
 import { IconButton } from '../ui/IconButton';
 import { CategoryIcon } from '../branding/CategoryIcon';
+import { useTaxonomy } from '../../services/taxonomyService';
 
 export interface ReportComposerHeaderProps {
   currentStep: number;
@@ -21,6 +22,7 @@ export const ReportComposerHeader: React.FC<ReportComposerHeaderProps> = ({
   onClose,
   onSelectStep,
 }) => {
+  const { getSegment } = useTaxonomy();
   const stepTitles = [
     {
       step: 1,
@@ -85,7 +87,7 @@ export const ReportComposerHeader: React.FC<ReportComposerHeaderProps> = ({
                   }}
                 >
                   <CategoryIcon section={segment} size="xs" />
-                  <span>{language === 'bn' ? SECTIONS[segment].shortNameBn : SECTIONS[segment].shortNameEn}</span>
+                  <span>{language === 'bn' ? getSegment(segment).shortNameBn : getSegment(segment).shortNameEn}</span>
                 </div>
               )}
             </div>

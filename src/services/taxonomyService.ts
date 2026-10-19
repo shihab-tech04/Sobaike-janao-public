@@ -126,7 +126,26 @@ let isPublishedConfigurationVerified = false;
 
 let isFetched = false;
 let isFetching = false;
+let lastFetchedAt = 0;
 const listeners = new Set<() => void>();
+
+/** Server-published categories can be added without shipping new theme tokens. */
+function fallbackForSegment(key: string): SegmentTaxonomyItem {
+  const configured = SECTIONS[key as SectionKey];
+  if (configured) return { ...configured, id: key };
+  return {
+    ...SECTIONS.public_safety,
+    key: key as SectionKey,
+    id: key,
+    slug: `/${key.replaceAll('_', '-')}`,
+    nameEn: key.replaceAll('_', ' '),
+    nameBn: key,
+    shortNameEn: key.replaceAll('_', ' '),
+    shortNameBn: key,
+    descriptionEn: '',
+    descriptionBn: '',
+  };
+}
 
 function notifyListeners() {
   listeners.forEach((listener) => {
@@ -296,9 +315,9 @@ export const TaxonomyService = {
 
         const nextSegments: Record<string, SegmentTaxonomyItem> = {};
         for (const row of configuration.segments) {
-          if (!SECTION_KEYS.includes(row.id as SectionKey)) continue;
+          if (!row.id || !/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(row.id)) continue;
           const key = row.id as SectionKey;
-          const fallback = SECTIONS[key];
+          const fallback = fallbackForSegment(key);
           nextSegments[key] = {
             ...fallback,
             id: key,
@@ -309,7 +328,7 @@ export const TaxonomyService = {
             shortNameBn: row.shortNameBn || fallback.shortNameBn,
             descriptionEn: row.descriptionEn || fallback.descriptionEn,
             descriptionBn: row.descriptionBn || fallback.descriptionBn,
-            sortOrder: Number.isInteger(row.sortOrder) ? row.sortOrder : SECTION_KEYS.indexOf(key) + 1,
+            sortOrder: Number.isInteger(row.sortOrder) ? row.sortOrder : 999,
           };
         }
         if (Object.keys(nextSegments).length === 0) {
@@ -356,6 +375,7 @@ export const TaxonomyService = {
     } finally {
       isFetched = true;
       isFetching = false;
+      lastFetchedAt = Date.now();
       notifyListeners();
     }
 
@@ -373,7 +393,7 @@ export const TaxonomyService = {
    * Synchronous accessor for a specific segment.
    */
   getSegment(key: SectionKey): SegmentTaxonomyItem {
-    return cachedSegments[key] || { ...SECTIONS[key], id: key };
+    return cachedSegments[key] || fallbackForSegment(key);
   },
 
   /**
@@ -442,12 +462,24 @@ export function useTaxonomy() {
       setTick((t) => t + 1);
     });
 
-    if (!isFetched && !isFetching) {
+    if ((!isFetched || Date.now() - lastFetchedAt > 5000) && !isFetching) {
       TaxonomyService.fetchTaxonomy().catch(() => {});
     }
 
+    // Read published-only SQL again when a visitor returns to the reporting
+    // flow, so Admin publication/deactivation is not masked by a stale cache.
+    const refreshIfStale = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastFetchedAt > 1000 && !isFetching) {
+        TaxonomyService.fetchTaxonomy().catch(() => {});
+      }
+    };
+    window.addEventListener('focus', refreshIfStale);
+    document.addEventListener('visibilitychange', refreshIfStale);
+
     return () => {
       unsubscribe();
+      window.removeEventListener('focus', refreshIfStale);
+      document.removeEventListener('visibilitychange', refreshIfStale);
     };
   }, []);
 

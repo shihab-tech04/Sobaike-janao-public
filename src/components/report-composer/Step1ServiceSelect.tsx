@@ -40,18 +40,21 @@ export const Step1ServiceSelect: React.FC<Step1ServiceSelectProps> = ({
     textVar: string;
     borderVar: string;
     primaryVar: string;
-  }> = SECTION_KEYS.map((key) => {
-    const section = segments[key] || SECTIONS[key];
+  }> = (isPublishedConfigurationVerified
+    ? Object.keys(segments).sort((a, b) => (segments[a].sortOrder ?? 999) - (segments[b].sortOrder ?? 999)) as SectionKey[]
+    : SECTION_KEYS).map((key) => {
+    const section = segments[key] || SECTIONS[key] || SECTIONS.public_safety;
+    const builtIn = SECTION_KEYS.includes(key);
     return {
       key,
       titleBn: section.nameBn,
       titleEn: section.nameEn,
       descBn: section.descriptionBn,
       descEn: section.descriptionEn,
-      bgVar: `var(--sec-${key}-bg)`,
-      textVar: `var(--sec-${key}-text)`,
-      borderVar: `var(--sec-${key}-border)`,
-      primaryVar: `var(--sec-${key}-primary)`,
+      bgVar: builtIn ? `var(--sec-${key}-bg)` : section.bgColor,
+      textVar: builtIn ? `var(--sec-${key}-text)` : section.textColor,
+      borderVar: builtIn ? `var(--sec-${key}-border)` : section.borderColor,
+      primaryVar: builtIn ? `var(--sec-${key}-primary)` : section.primaryColor,
     };
   });
   // Never expose unpublished or disabled form routes. Offline fallback is the
@@ -118,9 +121,9 @@ export const Step1ServiceSelect: React.FC<Step1ServiceSelectProps> = ({
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors border shadow-2xs"
                     style={{
-                      backgroundColor: `var(--sec-${srv.key}-bg)`,
-                      color: `var(--sec-${srv.key}-text)`,
-                      borderColor: `var(--sec-${srv.key}-border)`,
+                      backgroundColor: srv.bgVar,
+                      color: srv.textVar,
+                      borderColor: srv.borderVar,
                     }}
                   >
                     <CategoryIcon section={srv.key} size="md" />
