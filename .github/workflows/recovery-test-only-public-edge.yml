@@ -169,6 +169,9 @@ jobs:
         id: synthetic_submit
         run: node tests/recovery-isolated/public-edge-sql.mjs
 
+      - name: Exercise every published legacy form in disposable SQL without weakening Edge throttling
+        run: psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file tests/recovery-isolated/phase05-all-published-forms.sql
+
       - name: Test actual Auth + TOTP Admin moderation-to-Public SQL contract
         env:
           RECOVERY_SYNTHETIC_REPORT_ID: ${{ steps.synthetic_submit.outputs.synthetic_report_id }}
