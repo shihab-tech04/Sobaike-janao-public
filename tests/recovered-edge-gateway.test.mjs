@@ -77,6 +77,12 @@ test('the recovered gateway validates origin and source identity before rate-lim
   assert.equal(accepted.status, 200);
   assert.equal(accepted.headers.get('access-control-allow-origin'), 'https://shobaikejanao.com');
 
+  const recovery = await handler(new Request('http://localhost/functions/v1/public-write-gateway', {
+    method: 'OPTIONS', headers: { origin: 'https://shihab-tech04.github.io' },
+  }));
+  assert.equal(recovery.status, 200);
+  assert.equal(recovery.headers.get('access-control-allow-origin'), 'https://shihab-tech04.github.io');
+
   const withoutIp = await send({ action: 'session', payload: {} }, { 'cf-connecting-ip': '' });
   assert.equal(withoutIp.status, 503);
   assert.equal(withoutIp.body.code, 'SOURCE_UNAVAILABLE');
@@ -86,6 +92,14 @@ test('the recovered gateway validates origin and source identity before rate-lim
   assert.equal(invalid.status, 400);
   assert.equal(invalid.body.code, 'INVALID_ACTION');
   assert.equal(calls.length, 0);
+});
+
+test('Public recovery origin is allowed only on the controlled Public Edge functions', async () => {
+  for (const slug of ['public-write-gateway', 'public-evidence-upload', 'public-ip-location']) {
+    const source = await readFile(new URL(`../supabase/functions/${slug}/index.ts`, import.meta.url), 'utf8');
+    assert.match(source, /"https:\/\/shihab-tech04\.github\.io"/);
+    assert.doesNotMatch(source, /"Access-Control-Allow-Origin"\s*:\s*"\*"/);
+  }
 });
 
 test('the recovered complaint action uses the protected RPC and exact submission arguments', async () => {

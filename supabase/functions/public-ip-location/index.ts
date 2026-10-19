@@ -5,6 +5,7 @@ const ALLOWED_ORIGINS = new Set([
   "https://shobaikejanao.com",
   "https://www.shobaikejanao.com",
   "https://shihabshajib01-cell.github.io",
+  "https://shihab-tech04.github.io",
   "http://localhost:5173",
   "http://localhost:3000",
 ]);
