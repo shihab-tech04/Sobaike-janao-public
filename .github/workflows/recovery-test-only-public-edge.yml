@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: shihab-tech04/Sobaike-Janao-Admin
-          ref: 3fb706a1e0b69275e3fb5a77bd68b6577662c302
+          ref: 3d1ab699408ddfe0f898c3a87e4057eda5ca8427
           path: recovery-backend
           persist-credentials: false
 
@@ -130,8 +130,16 @@ jobs:
         run: |
           set -euo pipefail
           psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file recovery-backend/test-only/current_contract_baseline.sql > "$RUNNER_TEMP/sobaike-sql-replay.log"
+          # Recover RPCs catalogued after the base fixture; run exclusively
+          # inside the verified disposable local database and guard session.
+          psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --single-transaction \
+            --command "SET recovery.test_only = 'true'" \
+            --file recovery-backend/test-only/phase02_missing_functions_part1.sql \
+            --file recovery-backend/test-only/phase02_missing_functions_part2.sql \
+            --file recovery-backend/test-only/phase02_missing_functions_part3.sql > "$RUNNER_TEMP/sobaike-rpc-replay.log"
           psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file recovery-backend/test-only/local-supabase/seed_synthetic_taxonomy.sql
           psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file tests/recovery-isolated/seed-public-report.sql
+          psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file tests/recovery-isolated/phase04-hosted-publication-fixture.sql
           psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file recovery-backend/test-only/local-supabase/assert_contracts.sql
 
       - name: Start recovered Edge functions on local-only project

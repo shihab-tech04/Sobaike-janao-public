@@ -6,8 +6,5 @@
 INSERT INTO private.security_runtime_secrets (key, secret)
 VALUES ('public_abuse_hmac', extensions.gen_random_bytes(32));
 
-INSERT INTO public.subcategories (id, segment_id, name_bn, name_en, active, sort_order, slug)
-VALUES (
-  'ci-road-transport', 'road_transport', 'পরীক্ষামূলক সড়ক সমস্যা',
-  'Synthetic road transport report', true, 1, 'ci-road-transport'
-);
+-- Taxonomy is supplied by phase04-hosted-publication-fixture.sql; reports
+-- below use a real published form ID but entirely synthetic report contents.

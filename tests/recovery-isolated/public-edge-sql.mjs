@@ -57,6 +57,38 @@ async function preflight() {
   console.log('PASS: CORS, unknown action, and direct anonymous RPC denial');
 }
 
+async function publishedTaxonomy() {
+  const res = await fetch(`${api}/rest/v1/rpc/get_public_reporting_configuration`, {
+    method: 'POST',
+    headers: { ...baseHeaders, 'content-type': 'application/json' },
+    body: '{}',
+    signal: AbortSignal.timeout(25_000),
+  });
+  assert.equal(res.status, 200, 'read-only active taxonomy RPC must be callable by anon');
+  const config = await res.json();
+  assert.deepEqual(config.segments.map((s) => s.id), [
+    'harassment', 'load_shedding', 'extortion', 'public_safety',
+    'road_transport', 'illegal_occupation', 'rickshaw',
+  ]);
+  assert.equal(config.subcategories.length, 27, 'published active subcategories');
+  assert.equal(config.forms.length, 27, 'one published form per active subcategory');
+  assert.equal(config.subcategories.some((s) => s.id === 'bribe-paid'), false);
+  assert.equal(config.forms.some((f) => f.subcategoryId === 'bribe-paid'), false);
+
+  const child = config.forms.find((f) => f.subcategoryId === 'child_abduction_murder');
+  const ride = config.forms.find((f) => f.subcategoryId === 'ride_sharing_safety');
+  assert.equal(child?.engineMode, 'schema');
+  assert.equal(ride?.engineMode, 'schema');
+  assert.equal(child.fields.some((f) => f.fieldKey === 'child_incident_type' && f.required), true);
+  for (const fieldKey of ['rideshare_platform', 'rideshare_incident_type', 'rideshare_role']) {
+    const field = ride.fields.find((f) => f.fieldKey === fieldKey);
+    assert.equal(field?.required, true, `${fieldKey} must remain required`);
+    assert.ok(Array.isArray(field?.options) && field.options.length > 0,
+      `${fieldKey} must have server-issued options`);
+  }
+  console.log('PASS: anon SQL RPC returned 7/27/27 exact taxonomy and both dynamic form contracts');
+}
+
 async function ipLocationSafety() {
   const endpointUrl = `${api}/functions/v1/public-ip-location`;
   const good = await fetch(endpointUrl, {
@@ -93,7 +125,7 @@ async function submitSyntheticReport() {
       visitor_id: 'ci-visitor-0001', session_id: 'ci-session-0001',
     },
     payload: {
-      segment: 'road_transport', subcategoryId: 'ci-road-transport',
+      segment: 'road_transport', subcategoryId: 'road-accident',
       title: 'Synthetic local road issue',
       description: 'Synthetic integration submission; never sourced from a real citizen.',
       privacyChoice: 'anonymous',
@@ -133,7 +165,67 @@ async function submitSyntheticReport() {
   }
 }
 
+async function submitPublishedSchemaForms() {
+  const cases = [
+    {
+      subcategoryId: 'child_abduction_murder',
+      customFieldAnswers: { childIncidentType: 'abduction' },
+      // Explicitly malicious/obsolete fields must be stripped by the server.
+      reportedSubject: 'This hidden subject must never be stored',
+      evidenceTypes: ['image'],
+      evidenceDescription: 'This hidden evidence must never be stored',
+      hasSupportingInfo: true,
+    },
+    {
+      subcategoryId: 'ride_sharing_safety',
+      customFieldAnswers: {
+        rideSharePlatform: 'pathao',
+        rideShareIncidentType: 'unsafe_driving',
+        rideShareRole: 'passenger',
+        rideShareVehicleType: 'motorcycle',
+      },
+    },
+  ];
+  for (const entry of cases) {
+    const submissionId = `ci-schema-${entry.subcategoryId}-${randomUUID()}`;
+    const req = {
+      action: 'complaint',
+      submissionRpc: 'submit_public_configured_complaint',
+      clientSubmissionId: submissionId,
+      reporterContext: {
+        latitude: 23.75, longitude: 90.39, accuracy_meters: 50,
+        visitor_id: `ci-visitor-${entry.subcategoryId}`,
+        session_id: `ci-session-${entry.subcategoryId}`,
+      },
+      payload: {
+        segment: 'public_safety',
+        subcategoryId: entry.subcategoryId,
+        title: `Synthetic isolated ${entry.subcategoryId} test`,
+        description: 'Synthetic isolated reporting form test; not a real incident.',
+        incidentDate: new Date().toISOString().slice(0, 10),
+        privacyChoice: 'anonymous',
+        location: { division: 'Dhaka', district: 'Dhaka', upazilaOrThana: 'Dhanmondi' },
+        ...entry,
+      },
+    };
+    const first = await endpoint('public-write-gateway', req);
+    assert.equal(first.status, 200,
+      `${entry.subcategoryId} gateway returned HTTP ${first.status}: ${JSON.stringify(first.json)}`);
+    assert.equal(first.json.success, true,
+      `${entry.subcategoryId} dynamic schema rejected: ${JSON.stringify(first.json)}`);
+    assert.match(first.json.result?.reportId, /^SJ-[0-9]{4}-[0-9]{6}$/);
+
+    const retry = await endpoint('public-write-gateway', req);
+    assert.equal(retry.json.success, true, `${entry.subcategoryId} retry rejected`);
+    assert.equal(retry.json.result?.reportId, first.json.result.reportId,
+      `${entry.subcategoryId} retry created a duplicate report`);
+  }
+  console.log('PASS: both schema-driven forms submitted through local Edge/SQL with idempotent retries');
+}
+
 await preflight();
+await publishedTaxonomy();
 await ipLocationSafety();
 await submitSyntheticReport();
+await submitPublishedSchemaForms();
 console.log('SYNTHETIC_EDGE_HTTP_TESTS_PASS');

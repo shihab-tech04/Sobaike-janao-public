@@ -37,6 +37,35 @@ BEGIN
     RAISE EXCEPTION 'Expected one authentic Admin publication audit entry';
   END IF;
 
+  IF (SELECT count(*) FROM public.complaints WHERE client_submission_id LIKE 'ci-schema-%') <> 2 THEN
+    RAISE EXCEPTION 'Expected precisely two unique schema-driven synthetic submissions';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.complaints
+                 WHERE subcategory_id='child_abduction_murder'
+                   AND custom_field_answers->>'childIncidentType'='abduction'
+                   AND privacy_choice='anonymous'
+                   AND has_supporting_info=false
+                   AND evidence_types='[]'::jsonb
+                   AND evidence_description IS NULL
+                   AND reporter_name IS NULL AND reporter_contact IS NULL) THEN
+    RAISE EXCEPTION 'Child-safety schema/hidden-field sanitization failed';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.complaint_parties p JOIN public.complaints c ON c.id=p.complaint_id
+             WHERE c.client_submission_id LIKE 'ci-schema-child_abduction_murder-%') THEN
+    RAISE EXCEPTION 'Hidden child-safety party was persisted';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.complaints
+                 WHERE subcategory_id='ride_sharing_safety'
+                   AND custom_field_answers->>'rideSharePlatform'='pathao'
+                   AND custom_field_answers->>'rideShareIncidentType'='unsafe_driving'
+                   AND custom_field_answers->>'rideShareRole'='passenger') THEN
+    RAISE EXCEPTION 'Ride-sharing published custom answers were not saved';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.complaints c WHERE c.client_submission_id LIKE 'ci-schema-%'
+             AND c.status<>'submitted') THEN
+    RAISE EXCEPTION 'Schema-driven synthetic reports unexpectedly auto-published';
+  END IF;
+
   IF has_table_privilege('anon', 'public.complaint_submission_contexts', 'SELECT') THEN
     RAISE EXCEPTION 'Anonymous role unexpectedly reads private reporter context';
   END IF;
