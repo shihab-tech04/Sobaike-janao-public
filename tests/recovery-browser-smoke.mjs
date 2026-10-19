@@ -6,8 +6,9 @@ import { chromium } from 'playwright';
 
 const app = process.env.RECOVERY_BROWSER_APP;
 const baseUrl = process.env.RECOVERY_BROWSER_BASE_URL;
+const expectedSupabaseHost = process.env.RECOVERY_EXPECT_SUPABASE_HOST;
 assert.equal(app, 'public');
-assert.ok(baseUrl, 'RECOVERY_BROWSER_BASE_URL must point to the loopback Vite server');
+assert.ok(baseUrl, 'RECOVERY_BROWSER_BASE_URL must point to the site under test');
 
 const widths = [360, 390, 768, 1280, 1536];
 const browser = await chromium.launch({ headless: true });
@@ -167,8 +168,12 @@ try {
     }
     await page.close();
   }
-  assert.deepEqual([...supabaseHosts], [], 'browser smoke must not contact any hosted Supabase project');
-  console.log(`Responsive Public EN/BN × light/dark gate passed at ${widths.join(', ')} CSS pixels, including mobile navigation, scroll header, keyboard, text size, and focus targets. No hosted data requested.`);
+  if (expectedSupabaseHost) {
+    assert.deepEqual([...supabaseHosts], [expectedSupabaseHost], 'connected Public site must contact only its approved Supabase project');
+  } else {
+    assert.deepEqual([...supabaseHosts], [], 'isolated browser smoke must not contact any hosted Supabase project');
+  }
+  console.log(`Responsive Public EN/BN × light/dark gate passed at ${widths.join(', ')} CSS pixels, including mobile navigation, scroll header, keyboard, text size, and focus targets. Supabase mode: ${expectedSupabaseHost || 'isolated'}.`);
 } finally {
   await browser.close();
 }
