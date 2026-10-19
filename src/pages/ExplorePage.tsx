@@ -7,6 +7,7 @@ import { SECTIONS, SectionKey, SECTION_KEYS } from '../theme/tokens';
 import { ReportFeedSkeleton, MapExploreSkeleton } from '../components/ui/LoadingSkeleton';
 import type { ExploreViewMode } from '../components/explore/MapSectionHeader';
 import { PublicIncidentMap } from '../components/explore/PublicIncidentMap';
+import { UpazilaDrilldownPanel } from '../components/explore/UpazilaDrilldownPanel';
 import { DistrictRankingPanel } from '../components/explore/DistrictRankingPanel';
 import { RecentAreaReports } from '../components/explore/RecentAreaReports';
 import { ReportAnalyticsOverview } from '../components/explore/ReportAnalyticsOverview';
@@ -821,7 +822,7 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({ initialSection }) => {
       {/* 5. Selected Mode Content (Map vs Reports) or Zero Result Recovery */}
       {!isLoading && !fetchError && (
         <>
-          {filteredReports.length === 0 ? (
+          {filteredReports.length === 0 && viewMode !== 'heatmap' ? (
             /* Authoritative Zero-Result Recovery State */
             <div
               role="status"
@@ -871,6 +872,12 @@ export const ExplorePage: React.FC<ExplorePageProps> = ({ initialSection }) => {
                   onResetFilters={handleResetFilters}
                 />
               </div>
+
+              {/* Canonical district → thana/upazila directory. Published RPCs
+                  expose district names, not a validated subdistrict report ID. */}
+              {selectedDistrict !== 'all' && (
+                <UpazilaDrilldownPanel selectedDistrict={selectedDistrict} language={language} />
+              )}
 
               {/* Mobile Selected-Area Trigger Card (Mobile only, when district is selected) */}
               {selectedDistrict !== 'all' && (

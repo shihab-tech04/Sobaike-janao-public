@@ -120,3 +120,8 @@ jobs:
         env:
           RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:3000
         run: node tests/recovery-discovery-browser-smoke.mjs
+
+      - name: Check Bangladesh map modes, 64 districts, and thana drilldown on mobile and desktop
+        env:
+          RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:3000
+        run: node tests/recovery-map-browser-smoke.mjs
