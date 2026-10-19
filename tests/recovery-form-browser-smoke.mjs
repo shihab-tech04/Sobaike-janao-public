@@ -269,6 +269,7 @@ try {
     if (await locationModal.isVisible()) await newPage.getByRole('button', { name: 'এখন নয়', exact: true }).click();
     await newPage.locator('#bottom-nav-report').click();
     await newPage.locator('#service-select-card-synthetic_new_service').waitFor({ state: 'visible' });
+    assert.match(await newPage.locator('#service-select-card-synthetic_new_service').innerText(), /Synthetic new service|পরীক্ষামূলক নতুন সেবা/);
     assert.equal(await newPage.locator('[id^="service-select-card-"]').count(), 8,
       `${language}: newly published SQL category extends the static seven`);
     await newPage.locator('#service-select-card-synthetic_new_service').click();
@@ -278,7 +279,7 @@ try {
     await newPage.locator('#configured-field-witness_type').waitFor({ state: 'visible' });
     await newPage.locator('#configured-field-witness_type').selectOption('nearby');
     assert.equal(await newPage.locator('#configured-field-witness_type').inputValue(), 'nearby');
-    assert.match(await newPage.locator('body').innerText(), /Synthetic new service|পরীক্ষামূলক নতুন সেবা/);
+    assert.match(await newPage.locator('body').innerText(), /New service|নতুন সেবা/);
     await newPage.close();
   }
   console.log('Synthetic 7-category/27-form plus newly published eighth-category Public browser matrix passed in BN/EN; no live write attempted.');
