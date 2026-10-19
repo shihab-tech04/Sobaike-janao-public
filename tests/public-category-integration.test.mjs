@@ -93,6 +93,13 @@ test('anonymous category reads remain scoped to active public taxonomy contracts
   assert.doesNotMatch(banners, /\.from\('site_banners'\)/);
 });
 
+test('illegal charging icon is a bundled vector rather than a network-font ligature', async () => {
+  const icon = await readFile(new URL('../src/components/branding/EvStationIcon.tsx', import.meta.url), 'utf8');
+  assert.match(icon, /import\s*\{\s*PlugZap\s*\}\s*from\s*'lucide-react'/);
+  assert.match(icon, /export const EvStationIcon = PlugZap/);
+  assert.doesNotMatch(icon, /<span|material-symbols-outlined|>\s*ev_station\s*</);
+});
+
 test('report composer exposes every server-published category with a form, retaining the four-category offline fallback', () => {
   assert.match(tokens, /export const REPORT_FORM_SECTION_KEYS: SectionKey\[\] = \[[\s\S]*?'harassment'[\s\S]*?'load_shedding'[\s\S]*?'extortion'[\s\S]*?'rickshaw'[\s\S]*?\];/);
   assert.match(composer, /REPORT_FORM_SECTION_KEYS\.includes\(service\.key\)/);
