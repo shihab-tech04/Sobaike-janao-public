@@ -146,10 +146,11 @@ const created = unwrap(await adminAuth.rpc('admin_create_taxonomy_item', {
 assert.equal(created.success, true);
 assert.equal(created.item.active, false);
 assert.equal(created.item.config_status, 'draft');
-const schema = unwrap(await localService.from('reporting_form_schemas').select('status,engine_mode')
-  .eq('scope_id', 'ci_phase04_taxonomy').single(), 'created draft schema');
-assert.equal(schema.status, 'draft');
-assert.equal(schema.engine_mode, 'schema');
+const form = unwrap(await adminAuth.rpc('admin_get_reporting_form', {
+  p_subcategory_id: 'ci_phase04_taxonomy',
+}), 'authorized Admin draft form read');
+assert.equal(form.schema?.status, 'draft');
+assert.equal(form.schema?.engineMode, 'schema');
 assert.ok((await adminAuth.rpc('admin_update_taxonomy_item', {
   p_item_type: 'subcategory', p_item_id: 'ci_phase04_taxonomy',
   p_name_en: 'Test draft', p_name_bn: 'পরীক্ষামূলক খসড়া', p_active: true, p_sort_order: 99,
