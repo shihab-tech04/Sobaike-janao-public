@@ -23,6 +23,12 @@ BEGIN
     ORDER BY sc.segment_id,sc.sort_order,sc.id
   LOOP
     v_index := v_index+1;
+    -- PostgREST supplies request.headers per HTTP request. Model 25 distinct
+    -- TEST-NET reporters in this isolated SQL transaction, so the real IP/
+    -- subject limits continue to run unchanged for each synthetic submission.
+    PERFORM set_config('request.headers',jsonb_build_object(
+      'x-real-ip','198.51.100.'||(v_index+10)
+    )::text,true);
     v_submission_id := 'ci-alltypes-'||v_form.subcategory_id||'-'||gen_random_uuid()::text;
     v_context := jsonb_build_object(
       'latitude',23.75,'longitude',90.39,'accuracy_meters',50,
