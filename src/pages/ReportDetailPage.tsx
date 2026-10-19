@@ -320,6 +320,16 @@ export const ReportDetailPage: React.FC<ReportDetailPageProps> = ({ reportId }) 
           <span className="font-semibold text-ui-content-primary">
             {subcategory}
           </span>
+          {report.postOrigin && (
+            <span
+              id="report-detail-origin"
+              className="rounded-lg border border-ui-stroke-subtle bg-ui-surface-subtle px-2.5 py-1 text-[12px] font-medium text-ui-content-secondary"
+            >
+              {report.postOrigin === 'admin'
+                ? (language === 'bn' ? 'উৎসভিত্তিক প্রতিবেদন' : 'Sourced report')
+                : (language === 'bn' ? 'নাগরিকের জমা দেওয়া প্রতিবেদন' : 'Citizen-submitted report')}
+            </span>
+          )}
         </div>
 
         {/* Main Headline */}
@@ -329,14 +339,21 @@ export const ReportDetailPage: React.FC<ReportDetailPageProps> = ({ reportId }) 
 
         {/* Canonical Unified Metadata Bar */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 border-t border-ui-stroke-subtle text-[14px] text-ui-content-secondary">
-          <button
-            type="button"
-            onClick={() => navigateTo(`/location/${report.districtEn.toLowerCase()}`)}
-            className="flex items-center gap-1.5 font-medium text-ui-content-primary hover:text-ui-content-primary transition-colors cursor-pointer min-h-[44px] px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus rounded-lg"
-          >
-            <MapPin className="w-4 h-4 text-ui-content-muted shrink-0" aria-hidden="true" />
-            <span className="underline decoration-ui-stroke-subtle">{location}</span>
-          </button>
+          {report.districtEn ? (
+            <button
+              type="button"
+              onClick={() => navigateTo(`/location/${encodeURIComponent(report.districtEn.toLowerCase())}`)}
+              className="flex items-center gap-1.5 font-medium text-ui-content-primary hover:text-ui-content-primary transition-colors cursor-pointer min-h-[44px] px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus rounded-lg"
+            >
+              <MapPin className="w-4 h-4 text-ui-content-muted shrink-0" aria-hidden="true" />
+              <span className="underline decoration-ui-stroke-subtle">{location}</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 text-ui-content-muted min-h-[44px]">
+              <MapPin className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>{location}</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5 text-ui-content-muted min-h-[44px]">
             <Calendar className="w-4 h-4 text-ui-content-muted shrink-0" aria-hidden="true" />
             <span>

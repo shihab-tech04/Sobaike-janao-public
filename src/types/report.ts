@@ -58,6 +58,8 @@ export interface ReportMedia {
 
 export interface ReportItem {
   id: string;
+  /** Server-issued provenance: 'admin' means sourced/admin-published, not verified fact. */
+  postOrigin?: 'admin' | 'user';
   segment: SectionKey;
   subcategoryId: string;
   subcategoryBn: string;

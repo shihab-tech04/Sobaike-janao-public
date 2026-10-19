@@ -195,6 +195,9 @@ jobs:
       - name: Verify 24-hour moderated and seven-day pending reporter-context expiry
         run: psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file tests/recovery-isolated/phase06-location-retention.sql
 
+      - name: Verify Phase07 published-only provenance, responses and read-only popularity
+        run: psql "$RECOVERY_LOCAL_DB_URL" --set ON_ERROR_STOP=1 --file tests/recovery-isolated/phase07-published-read-contract.sql
+
       - name: Stop disposable local runner
         if: always()
         working-directory: recovery-backend/test-only/local-supabase

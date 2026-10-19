@@ -90,8 +90,12 @@ assert.equal(pendingForAdmin.length, 1, 'Admin read gate must reveal pending rep
 assert.equal(pendingForAdmin[0].status, 'submitted');
 assert.equal(unwrap(await adminAuth.rpc('has_permission', { p_permission_id: 'complaints.publish' }),
   'AAL1 sensitive permission'), false);
+assert.equal(unwrap(await adminAuth.rpc('has_permission', { p_permission_id: 'responses.publish' }),
+  'AAL1 response moderation permission'), false);
 assert.ok((await adminAuth.rpc('admin_publish_complaint', { p_complaint_id: reportId })).error,
   'even super admin cannot publish with an AAL1 session');
+assert.ok((await adminAuth.rpc('admin_publish_response', { p_response_id: 'ci-invalid-response' })).error,
+  'AAL1 administrator cannot moderate public responses');
 assert.equal(unwrap(await adminAuth.rpc('has_permission', { p_permission_id: 'categories.manage' }),
   'AAL1 taxonomy permission'), false);
 assert.ok((await adminAuth.rpc('admin_create_taxonomy_item', {
@@ -129,6 +133,74 @@ for (const privateKey of ['ci-visitor-0001', 'ci-session-0001', 'reporter_contac
   assert.equal(sensitive.includes(privateKey), false, `public RPC exposed private field: ${privateKey}`);
 }
 console.log('PASS: actual TOTP AAL2 Admin publication becomes public, without reporter context');
+
+// Phase 07: both forms of response use the real rate-limited Edge gateway,
+// remain private until moderated, and expose only sanctioned public fields.
+assert.ok((await visitor.rpc('submit_public_response_v2', {
+  p_report_id: reportId, p_response_type: 'citizen_information',
+  p_payload: { description: 'Direct RPC bypass must fail' },
+  p_visitor_id: randomUUID(), p_session_id: randomUUID(),
+})).error, 'anonymous visitors cannot bypass the Edge response rate limiter');
+
+const submitViaEdge = async (responseType, payload) => {
+  const res = await fetch(`${api}/functions/v1/public-write-gateway`, {
+    method: 'POST',
+    headers: {
+      apikey: anonKey, Authorization: `Bearer ${anonKey}`,
+      Origin: 'http://localhost:5173', 'x-real-ip': '192.0.2.45',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'response', reportId, responseType, payload,
+      visitorId: randomUUID(), sessionId: randomUUID(),
+    }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  const json = await res.json();
+  assert.equal(res.status, 200, `synthetic ${responseType} Edge: ${JSON.stringify(json)}`);
+  assert.equal(json.success, true, `synthetic ${responseType} Edge accepted`);
+  assert.equal(json.result?.status, 'pending_review');
+  assert.match(json.result?.responseId, /^SR-[0-9]{4}-[0-9]{6}$/);
+  return json.result.responseId;
+};
+
+const citizenResponseId = await submitViaEdge('citizen_information', {
+  description: 'Synthetic additional witness information for this test-only published report.',
+  contactConsent: true, contactInfo: 'private-citizen-reply@example.test',
+});
+const subjectResponseId = await submitViaEdge('subject_response', {
+  responderType: 'organization_rep',
+  responderName: 'Synthetic Organization Representative',
+  organizationName: 'Test-only Organization',
+  contactEmailOrPhone: 'private-subject-reply@example.test',
+  officialStatement: 'Synthetic clarification that disputes the allegation without claiming a verified verdict.',
+  requestCorrectionOrRemoval: true,
+  correctionDetails: 'Request correction after independent administrative review.',
+});
+const pendingResponses = unwrap(await visitor.rpc('get_public_published_responses', { p_report_id: reportId }),
+  'unmoderated responses public read');
+assert.deepEqual(pendingResponses, [], 'witness and correction request must not auto-publish');
+assert.equal(unwrap(await adminAuth.rpc('has_permission', { p_permission_id: 'responses.publish' }),
+  'AAL2 response permission'), true);
+assert.ok((await visitor.rpc('admin_publish_response', { p_response_id: citizenResponseId })).error,
+  'anonymous users may not approve citizen responses');
+
+for (const responseId of [citizenResponseId, subjectResponseId]) {
+  const published = unwrap(await adminAuth.rpc('admin_publish_response', { p_response_id: responseId }),
+    'AAL2 response moderation');
+  assert.equal(published.status, 'published');
+}
+const publishedResponses = unwrap(await visitor.rpc('get_public_published_responses', { p_report_id: reportId }),
+  'published-only responses');
+assert.equal(publishedResponses.length, 2, 'both approved response types visible exactly once');
+assert.ok(publishedResponses.some((entry) => entry.id === citizenResponseId && entry.responseType === 'citizen_information'));
+assert.ok(publishedResponses.some((entry) => entry.id === subjectResponseId && entry.responseType === 'subject_response'));
+const publicResponseJson = JSON.stringify(publishedResponses);
+for (const forbidden of ['private-citizen-reply@example.test', 'private-subject-reply@example.test',
+  'contactEmailOrPhone', 'correctionDetails', 'contactInfo']) {
+  assert.equal(publicResponseJson.includes(forbidden), false, `public response leaked ${forbidden}`);
+}
+console.log('PHASE07_RESPONSE_MODERATION_AND_CORRECTION_PASS');
 
 // Phase 04: exercise the actual Admin create/edit/move RPCs through a real
 // AAL2 session. These records exist only in the disposable local fixture.

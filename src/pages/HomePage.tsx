@@ -80,6 +80,9 @@ export const HomePage: React.FC = () => {
       rickshaw: allReports.filter((r) => r.segment === 'rickshaw').length,
       extortion: allReports.filter((r) => r.segment === 'extortion').length,
       load_shedding: allReports.filter((r) => r.segment === 'load_shedding').length,
+      public_safety: allReports.filter((r) => r.segment === 'public_safety').length,
+      road_transport: allReports.filter((r) => r.segment === 'road_transport').length,
+      illegal_occupation: allReports.filter((r) => r.segment === 'illegal_occupation').length,
     };
   }, [allReports]);
 

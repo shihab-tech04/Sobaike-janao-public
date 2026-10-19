@@ -4,20 +4,29 @@ import { toBanglaDigits } from '../utils/formatters';
 
 export interface SupabasePublicReportRPC {
   id: string;
+  postOrigin?: 'admin' | 'user' | null;
   segment: string;
   subcategoryId: string;
   subcategoryBn?: string;
   subcategoryEn?: string;
   titleBn?: string;
   titleEn?: string;
+  summaryBn?: string | null;
+  summaryEn?: string | null;
   descriptionBn?: string;
   descriptionEn?: string;
   reportedSubject?: string | null;
   organization?: string | null;
   reporterName?: string | null;
   district?: string | null;
+  districtBn?: string | null;
+  districtEn?: string | null;
   area?: string | null;
+  areaBn?: string | null;
+  areaEn?: string | null;
   location?: string | null;
+  locationBn?: string | null;
+  locationEn?: string | null;
   incidentDate?: string | null;
   incidentTime?: string | null;
   incident_time?: string | null;
@@ -105,17 +114,19 @@ export const mapSupabasePublicReportToItem = (
   const titleBn = rpc.titleBn || rpc.titleEn || rpc.id;
   const titleEn = rpc.titleEn || rpc.titleBn || rpc.id;
 
-  const fullDescBn = rpc.descriptionBn || rpc.descriptionEn || '';
-  const fullDescEn = rpc.descriptionEn || rpc.descriptionBn || '';
+  const fullDescBn = rpc.descriptionBn || rpc.descriptionEn || rpc.summaryBn || rpc.summaryEn || '';
+  const fullDescEn = rpc.descriptionEn || rpc.descriptionBn || rpc.summaryEn || rpc.summaryBn || '';
+  const shortDescBn = rpc.summaryBn || rpc.summaryEn || fullDescBn;
+  const shortDescEn = rpc.summaryEn || rpc.summaryBn || fullDescEn;
 
-  const locationBn = rpc.location ? rpc.location : 'অবস্থান গোপন';
-  const locationEn = rpc.location ? rpc.location : 'Location withheld';
+  const locationBn = rpc.locationBn || rpc.locationEn || rpc.location || 'অবস্থান গোপন';
+  const locationEn = rpc.locationEn || rpc.locationBn || rpc.location || 'Location withheld';
 
-  const districtBn = rpc.district || '';
-  const districtEn = rpc.district || '';
+  const districtBn = rpc.districtBn || rpc.district || rpc.districtEn || '';
+  const districtEn = rpc.districtEn || rpc.district || rpc.districtBn || '';
 
-  const areaBn = rpc.area || '';
-  const areaEn = rpc.area || '';
+  const areaBn = rpc.areaBn || rpc.area || rpc.areaEn || '';
+  const areaEn = rpc.areaEn || rpc.area || rpc.areaBn || '';
 
   const incidentDateBn = rpc.incidentDate ? formatBanglaDate(rpc.incidentDate) : '';
   const incidentDateEn = rpc.incidentDate ? formatEnglishDate(rpc.incidentDate) : '';
@@ -131,14 +142,15 @@ export const mapSupabasePublicReportToItem = (
 
   return {
     id: rpc.id,
+    postOrigin: rpc.postOrigin === 'admin' ? 'admin' : rpc.postOrigin === 'user' ? 'user' : undefined,
     segment,
     subcategoryId,
     subcategoryBn,
     subcategoryEn,
     titleBn,
     titleEn,
-    shortDescriptionBn: fullDescBn,
-    shortDescriptionEn: fullDescEn,
+    shortDescriptionBn: shortDescBn,
+    shortDescriptionEn: shortDescEn,
     fullDescriptionBn: fullDescBn,
     fullDescriptionEn: fullDescEn,
     reportedSubject: rpc.reportedSubject || undefined,

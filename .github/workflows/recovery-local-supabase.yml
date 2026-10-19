@@ -115,3 +115,8 @@ jobs:
         env:
           RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:3000
         run: node tests/recovery-form-browser-smoke.mjs
+
+      - name: Check source-provenance, search filters, paging, and response modal journeys
+        env:
+          RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:3000
+        run: node tests/recovery-discovery-browser-smoke.mjs
