@@ -220,6 +220,9 @@ try {
       name: language === 'bn' ? 'ছবি 1 বড় করে দেখুন' : 'Expand image 1',
     }).click();
     await ridePage.keyboard.press('Escape');
+    await ridePage.locator('#attachment-lightbox-modal').waitFor({ state: 'hidden' });
+    assert.equal(await ridePage.locator('#draft-confirm-close-modal').isVisible(), false,
+      `${language}: closing an image viewer must not ask to discard the report draft`);
     await attachments.getByRole('button', {
       name: language === 'bn' ? 'ছবি 1 মুছুন' : 'Remove image 1',
     }).click();

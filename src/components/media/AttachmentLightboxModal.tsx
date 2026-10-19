@@ -98,6 +98,12 @@ export const AttachmentLightboxModal: React.FC<AttachmentLightboxModalProps> = (
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // This viewer lives inside the report composer Modal but is rendered
+      // above it. Handle viewer keys in capture phase so the parent Modal's
+      // global Escape/Tab listener cannot also close the draft underneath.
+      if (['Escape', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+        e.stopImmediatePropagation();
+      }
       if (e.key === 'Escape') {
         e.preventDefault();
         onCloseRef.current();
@@ -130,8 +136,8 @@ export const AttachmentLightboxModal: React.FC<AttachmentLightboxModalProps> = (
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen]);
 
   if (!isOpen || images.length === 0) return null;
