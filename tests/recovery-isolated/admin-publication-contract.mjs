@@ -92,6 +92,12 @@ assert.equal(unwrap(await adminAuth.rpc('has_permission', { p_permission_id: 'co
   'AAL1 sensitive permission'), false);
 assert.ok((await adminAuth.rpc('admin_publish_complaint', { p_complaint_id: reportId })).error,
   'even super admin cannot publish with an AAL1 session');
+assert.equal(unwrap(await adminAuth.rpc('has_permission', { p_permission_id: 'categories.manage' }),
+  'AAL1 taxonomy permission'), false);
+assert.ok((await adminAuth.rpc('admin_create_taxonomy_item', {
+  p_item_type: 'subcategory', p_item_id: 'ci_phase04_taxonomy',
+  p_parent_segment_id: 'road_transport', p_name_en: 'Test draft', p_name_bn: 'পরীক্ষামূলক খসড়া', p_sort_order: 99,
+})).error, 'AAL1 administrator cannot create taxonomy items');
 console.log('PASS: anon/non-admin deny; real Admin AAL1 can read but cannot publish');
 
 const enrollment = unwrap(await adminAuth.auth.mfa.enroll({ factorType: 'totp' }),
@@ -104,6 +110,8 @@ const assurance = unwrap(await adminAuth.auth.mfa.getAuthenticatorAssuranceLevel
 assert.equal(assurance.currentLevel, 'aal2', 'MFA must actually upgrade the session');
 assert.equal(unwrap(await adminAuth.rpc('has_permission', { p_permission_id: 'complaints.publish' }),
   'AAL2 sensitive permission'), true, 'authorized real AAL2 session expected');
+assert.equal(unwrap(await adminAuth.rpc('has_permission', { p_permission_id: 'categories.manage' }),
+  'AAL2 taxonomy permission'), true, 'AAL2 grants the seeded taxonomy permission');
 
 const result = unwrap(await adminAuth.rpc('admin_publish_complaint', { p_complaint_id: reportId }),
   'Admin publish SQL RPC');
@@ -121,4 +129,58 @@ for (const privateKey of ['ci-visitor-0001', 'ci-session-0001', 'reporter_contac
   assert.equal(sensitive.includes(privateKey), false, `public RPC exposed private field: ${privateKey}`);
 }
 console.log('PASS: actual TOTP AAL2 Admin publication becomes public, without reporter context');
+
+// Phase 04: exercise the actual Admin create/edit/move RPCs through a real
+// AAL2 session. These records exist only in the disposable local fixture.
+const publishedBefore = unwrap(await visitor.rpc('get_public_reporting_configuration'), 'taxonomy before mutations');
+assert.equal(publishedBefore.forms.length, 27);
+assert.ok((await visitor.rpc('admin_create_taxonomy_item', {
+  p_item_type: 'subcategory', p_item_id: 'ci_phase04_taxonomy',
+  p_parent_segment_id: 'road_transport', p_name_en: 'Test draft', p_name_bn: 'পরীক্ষামূলক খসড়া', p_sort_order: 99,
+})).error, 'anonymous taxonomy create must be denied');
+
+const created = unwrap(await adminAuth.rpc('admin_create_taxonomy_item', {
+  p_item_type: 'subcategory', p_item_id: 'ci_phase04_taxonomy',
+  p_parent_segment_id: 'road_transport', p_name_en: 'Test draft', p_name_bn: 'পরীক্ষামূলক খসড়া', p_sort_order: 99,
+}), 'create inactive taxonomy draft');
+assert.equal(created.success, true);
+assert.equal(created.item.active, false);
+assert.equal(created.item.config_status, 'draft');
+const schema = unwrap(await localService.from('reporting_form_schemas').select('status,engine_mode')
+  .eq('scope_id', 'ci_phase04_taxonomy').single(), 'created draft schema');
+assert.equal(schema.status, 'draft');
+assert.equal(schema.engine_mode, 'schema');
+assert.ok((await adminAuth.rpc('admin_update_taxonomy_item', {
+  p_item_type: 'subcategory', p_item_id: 'ci_phase04_taxonomy',
+  p_name_en: 'Test draft', p_name_bn: 'পরীক্ষামূলক খসড়া', p_active: true, p_sort_order: 99,
+})).error, 'unpublished taxonomy draft cannot be activated');
+
+const renamed = unwrap(await adminAuth.rpc('admin_update_taxonomy_item', {
+  p_item_type: 'subcategory', p_item_id: 'ci_phase04_taxonomy',
+  p_name_en: 'Renamed synthetic draft', p_name_bn: 'নতুন পরীক্ষামূলক খসড়া', p_active: false, p_sort_order: 98,
+}), 'rename and reorder inactive draft');
+assert.equal(renamed.item.name_en, 'Renamed synthetic draft');
+assert.equal(renamed.item.sort_order, 98);
+const draftMove = unwrap(await adminAuth.rpc('admin_move_subcategory', {
+  p_subcategory_id: 'ci_phase04_taxonomy', p_target_segment_id: 'public_safety', p_sort_order: 97,
+}), 'move draft category');
+assert.equal(draftMove.moved, true);
+assert.equal(draftMove.configStatus, 'draft');
+
+// This report already exists and is published; moving its former subcategory
+// must preserve that historical report while disabling new submissions.
+const publishedMove = unwrap(await adminAuth.rpc('admin_move_subcategory', {
+  p_subcategory_id: 'road-accident', p_target_segment_id: 'public_safety', p_sort_order: 90,
+}), 'move active category with historical report');
+assert.equal(publishedMove.success, true);
+assert.equal(publishedMove.moved, true);
+assert.ok(publishedMove.historicalReportCount >= 1);
+assert.equal(publishedMove.configStatus, 'ready');
+const taxonomyAfter = unwrap(await visitor.rpc('get_public_reporting_configuration'), 'taxonomy after draft and move');
+assert.equal(taxonomyAfter.forms.length, 26, 'moved active form must disappear until republished');
+assert.equal(taxonomyAfter.subcategories.some((s) => s.id === 'road-accident'), false);
+assert.equal(taxonomyAfter.forms.some((f) => f.subcategoryId === 'ci_phase04_taxonomy'), false);
+assert.ok(unwrap(await visitor.rpc('get_public_published_report', { p_report_id: reportId }),
+  'published report must survive taxonomy move'), 'historical published report was lost');
+console.log('PASS: AAL2 Admin draft/rename/reorder/move and public active-only propagation with historical preservation');
 console.log('SYNTHETIC_ADMIN_PUBLICATION_CONTRACT_PASS');

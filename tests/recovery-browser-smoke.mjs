@@ -123,6 +123,10 @@ try {
 
     await page.locator(desktop ? '#rail-text-size-large' : '#drawer-text-size-large').click();
     assert.equal(await page.locator('html').getAttribute('data-text-size'), 'large');
+    // Theme state, HTML attributes and the browser's computed styles can
+    // settle in separate rendering tasks on headless CI workers.
+    await page.waitForFunction(() => parseFloat(getComputedStyle(document.body).fontSize) >= 15.5,
+      null, { timeout: 5000 });
     const largeBodySize = await page.locator('body').evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
     assert.ok(largeBodySize >= 15.5, `larger reading mode must increase body text: ${largeBodySize}px`);
     await assertNoHorizontalOverflow('en dark large text');

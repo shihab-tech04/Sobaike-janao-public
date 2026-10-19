@@ -203,6 +203,7 @@ async function submitPublishedSchemaForms() {
         title: `Synthetic isolated ${entry.subcategoryId} test`,
         description: 'Synthetic isolated reporting form test; not a real incident.',
         incidentDate: new Date().toISOString().slice(0, 10),
+        frequency: 'one-time',
         privacyChoice: 'anonymous',
         location: { division: 'Dhaka', district: 'Dhaka', upazilaOrThana: 'Dhanmondi' },
         ...entry,
