@@ -41,7 +41,9 @@ try {
       await route.fulfill({ status: 200, contentType: 'image/png',
         body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLqzgAAAABJRU5ErkJggg==', 'base64') });
     });
-    const nav = await page.goto(new URL('/explore', baseUrl).href, { waitUntil: 'domcontentloaded' });
+    // The recovered Public app intentionally uses HashRouter so Pages links
+    // are /#/explore, not an HTML request to /explore.
+    const nav = await page.goto(`${baseUrl.replace(/\/$/, '')}/#/explore`, { waitUntil: 'domcontentloaded' });
     try {
       await page.locator('#explore-page-container').waitFor({ state: 'visible', timeout: 8000 });
     } catch (error) {
