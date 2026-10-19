@@ -87,6 +87,7 @@ async function publishedTaxonomy() {
       `${fieldKey} must have server-issued options`);
   }
   console.log('PASS: anon SQL RPC returned 7/27/27 exact taxonomy and both dynamic form contracts');
+  return config;
 }
 
 async function ipLocationSafety() {
@@ -224,9 +225,75 @@ async function submitPublishedSchemaForms() {
   console.log('PASS: both schema-driven forms submitted through local Edge/SQL with idempotent retries');
 }
 
+async function submitEveryPublishedLegacyForm(config) {
+  const legacyForms = config.forms.filter((f) => f.engineMode === 'legacy');
+  assert.equal(legacyForms.length, 25, 'all 25 active legacy forms must be exercised');
+  for (let i = 0; i < legacyForms.length; i++) {
+    const form = legacyForms[i];
+    const subcat = config.subcategories.find((s) => s.id === form.subcategoryId);
+    assert.ok(subcat, `${form.subcategoryId} has no active category`);
+    const payload = {
+      segment: subcat.segmentId,
+      subcategoryId: form.subcategoryId,
+      title: `Synthetic form coverage ${form.subcategoryId}`,
+      description: 'Synthetic disposable SQL report. This is not a real incident.',
+      incidentDate: new Date().toISOString().slice(0, 10),
+      frequency: 'one-time',
+      privacyChoice: 'anonymous',
+      location: { division: 'Dhaka', district: 'Dhaka', upazilaOrThana: 'Dhanmondi' },
+    };
+    if (subcat.segmentId === 'harassment') {
+      Object.assign(payload, {
+        affectedPersonAgeGroup: 'unknown_not_stated',
+        allegedAbuserRelationship: 'unknown_not_stated',
+        reportingFor: 'self',
+      });
+    }
+    if (form.subcategoryId === 'mob-justice') {
+      Object.assign(payload, {
+        mobJusticeDetails: { trigger: 'unknown', outcome: 'unknown', ongoingStatus: 'unknown' },
+      });
+    }
+    if (['load-shedding-outage', 'gas-shortage'].includes(form.subcategoryId)) {
+      Object.assign(payload, { incidentTime: '12:00' });
+    }
+    if (form.subcategoryId === 'excess-electricity-bill') {
+      Object.assign(payload, {
+        recentBillMonth: '2026-10', previousBillMonth: '2026-09',
+        recentBillAmount: 500, previousBillAmount: 400,
+      });
+    }
+    const clientSubmissionId = `ci-alltypes-${form.subcategoryId}-${randomUUID()}`;
+    const request = {
+      action: 'complaint', submissionRpc: 'submit_public_complaint_v2',
+      clientSubmissionId,
+      reporterContext: {
+        latitude: 23.75, longitude: 90.39, accuracy_meters: 50,
+        visitor_id: `ci-alltypes-visitor-${i}`, session_id: `ci-alltypes-session-${i}`,
+      },
+      payload,
+    };
+    // Separate TEST-NET source fingerprints prevent one synthetic test from
+    // exhausting the rate limit meant for a real citizen; never use production.
+    const testHeaders = { 'x-real-ip': `198.51.100.${i + 10}` };
+    const first = await endpoint('public-write-gateway', request, testHeaders);
+    assert.equal(first.status, 200,
+      `${form.subcategoryId} HTTP failure: ${JSON.stringify(first.json)}`);
+    assert.equal(first.json.success, true,
+      `${form.subcategoryId} SQL rejection: ${JSON.stringify(first.json)}`);
+    assert.match(first.json.result?.reportId, /^SJ-[0-9]{4}-[0-9]{6}$/);
+    const retry = await endpoint('public-write-gateway', request, testHeaders);
+    assert.equal(retry.json.success, true, `${form.subcategoryId} idempotent retry rejected`);
+    assert.equal(retry.json.result?.reportId, first.json.result.reportId,
+      `${form.subcategoryId} retry created a duplicate`);
+  }
+  console.log('PASS: all 25 legacy published forms accepted once via isolated Edge/SQL with idempotent retries');
+}
+
 await preflight();
-await publishedTaxonomy();
+const config = await publishedTaxonomy();
 await ipLocationSafety();
 await submitSyntheticReport();
 await submitPublishedSchemaForms();
+await submitEveryPublishedLegacyForm(config);
 console.log('SYNTHETIC_EDGE_HTTP_TESTS_PASS');

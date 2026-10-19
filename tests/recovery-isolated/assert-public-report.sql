@@ -66,6 +66,18 @@ BEGIN
     RAISE EXCEPTION 'Schema-driven synthetic reports unexpectedly auto-published';
   END IF;
 
+  IF (SELECT count(*) FROM public.complaints c WHERE c.client_submission_id LIKE 'ci-alltypes-%') <> 25 THEN
+    RAISE EXCEPTION 'Expected precisely 25 distinct legacy form submissions in the disposable database';
+  END IF;
+  IF (SELECT count(DISTINCT subcategory_id) FROM public.complaints
+      WHERE client_submission_id LIKE 'ci-alltypes-%') <> 25 THEN
+    RAISE EXCEPTION 'Every active legacy subcategory must have its own SQL report';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.complaints WHERE client_submission_id LIKE 'ci-alltypes-%'
+             AND (status <> 'submitted' OR custom_field_answers <> '{}'::jsonb)) THEN
+    RAISE EXCEPTION 'Legacy form leaked custom fields or auto-published';
+  END IF;
+
   IF has_table_privilege('anon', 'public.complaint_submission_contexts', 'SELECT') THEN
     RAISE EXCEPTION 'Anonymous role unexpectedly reads private reporter context';
   END IF;
