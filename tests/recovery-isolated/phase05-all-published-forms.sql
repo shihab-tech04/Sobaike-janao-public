@@ -11,6 +11,7 @@ DECLARE
   v_result jsonb;
   v_retry jsonb;
   v_index integer := 0;
+  v_ip_only_denied boolean := false;
 BEGIN
   FOR v_form IN
     SELECT sc.id AS subcategory_id, sc.segment_id
@@ -90,6 +91,35 @@ BEGIN
       WHERE client_submission_id LIKE 'ci-alltypes-%') <> 25 THEN
     RAISE EXCEPTION 'Expected exactly 25 submitted legacy reports';
   END IF;
+
+  -- The accepted "Not now" choice permits approximate-IP browsing, never
+  -- a citizen submission. Keep this denial test on a separate synthetic IP,
+  -- without consuming the Edge smoke test's real request quota.
+  PERFORM set_config('request.headers',
+    '{"x-real-ip":"198.51.100.240"}',true);
+  BEGIN
+    PERFORM public.submit_public_complaint_v2(
+      jsonb_build_object(
+        'segment','road_transport','subcategoryId','road-accident',
+        'title','IP-only synthetic denial',
+        'description','An approximate browse location is not reporter GPS.',
+        'location',jsonb_build_object('division','Dhaka','district','Dhaka')
+      ),
+      'ci-ip-only-'||gen_random_uuid()::text,
+      jsonb_build_object('visitor_id','ci-ip-only','session_id','ci-ip-only',
+        'country','BD','source','approximate_ip')
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF sqlerrm NOT LIKE 'REPORTER_LOCATION_REQUIRED:%'
+       AND sqlerrm NOT LIKE 'INVALID_REPORTER_COORDINATES:%' THEN
+      RAISE EXCEPTION 'Unexpected IP-only rejection: %',sqlerrm;
+    END IF;
+    v_ip_only_denied := true;
+  END;
+  IF NOT v_ip_only_denied THEN
+    RAISE EXCEPTION 'Approximate-IP-only reporter bypassed the mandatory GPS guard';
+  END IF;
   RAISE NOTICE 'PASS: all % active legacy forms, each with one SQL row and idempotent retry',v_index;
+  RAISE NOTICE 'PASS: approximate IP browsing alone is rejected for report submission';
 END;
 $phase05$;

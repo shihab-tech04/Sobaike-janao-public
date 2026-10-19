@@ -55,19 +55,7 @@ async function preflight() {
   });
   assert.equal(direct.ok, false, 'anonymous direct RPC must not succeed');
 
-  const ipOnly = await endpoint('public-write-gateway', {
-    action: 'complaint', submissionRpc: 'submit_public_complaint_v2',
-    clientSubmissionId: `ci-ip-only-${randomUUID()}`,
-    reporterContext: { visitor_id: 'ci-ip-only-visitor', session_id: 'ci-ip-only-session',
-      country: 'BD', source: 'approximate_ip' },
-    payload: { segment: 'road_transport', subcategoryId: 'road-accident',
-      title: 'This test must never be submitted',
-      description: 'Approximate IP browsing must not authorize a report submission.',
-      location: { division: 'Dhaka', district: 'Dhaka' } },
-  }, { 'x-real-ip': '192.0.2.99' });
-  assert.equal(ipOnly.json.success, false, 'IP-only location must never satisfy reporter GPS');
-  assert.match(String(ipOnly.json.error), /REPORTER_LOCATION_REQUIRED|INVALID_REPORTER_COORDINATES/);
-  console.log('PASS: CORS, unknown action, anon direct RPC denial, and IP-only submission denial');
+  console.log('PASS: CORS, unknown action, and anonymous direct RPC denial');
 }
 
 async function publishedTaxonomy() {
