@@ -67,7 +67,8 @@ try {
     await page.locator('#explore-map-mode-density').click();
     assert.equal(await page.locator('#explore-map-mode-density').getAttribute('aria-pressed'), 'true');
     assert.ok(await page.locator('#heatmap-legend').isVisible(), 'density legend must be visible');
-    assert.ok((await page.locator('#heatmap-legend').innerText()).includes(locale === 'bn' ? '২' : '1'),
+    await page.locator('#public-heatmap-card .leaflet-heatmap-layer').waitFor({ state: 'visible' });
+    assert.ok((await page.locator('#heatmap-legend').innerText()).includes(locale === 'bn' ? '১' : '1'),
       'legend needs a numeric report scale');
 
     await page.locator('#explore-map-mode-points').click();
@@ -82,7 +83,7 @@ try {
       await page.locator('#desktop-select-district').click();
       await page.locator('#desktop-select-district-listbox').getByRole('option', { name: /Dhaka|ঢাকা/ }).first().click();
     } else {
-      await page.getByRole('button', { name: /^ফিল্টার$|^Filters$/ }).click();
+      await page.getByRole('button', { name: locale === 'bn' ? /ফিল্টার খুলুন/ : /Open filters/ }).click();
       await page.locator('#mobile-filter-district').click();
       await page.locator('#mobile-filter-district-listbox').getByRole('option', { name: /Dhaka|ঢাকা/ }).first().click();
       await page.getByRole('button', { name: locale === 'bn' ? 'ফিল্টার প্রয়োগ করুন' : 'Apply filters' }).click();

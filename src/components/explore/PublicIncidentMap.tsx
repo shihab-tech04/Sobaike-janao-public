@@ -1,10 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
-// Ensure global Leaflet is set before leaflet.heat evaluates in browser
-if (typeof window !== 'undefined' && !(window as any).L) {
-  (window as any).L = L;
-}
-import 'leaflet.heat';
+// leaflet.heat is a legacy global-L plugin. A static ESM import evaluates
+// before this module can set window.L, crashing the lazy Explore route.
 
 import { ReportItem } from '../../types/report';
 import { SectionKey } from '../../theme/tokens';
@@ -41,7 +38,17 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   const [isMapReady, setIsMapReady] = useState(false);
+  const [isHeatReady, setIsHeatReady] = useState(false);
   const [mapMode, setMapMode] = useState<'density' | 'points' | 'districts'>('density');
+
+  useEffect(() => {
+    (window as any).L = L;
+    let active = true;
+    import('leaflet.heat').then(() => {
+      if (active) setIsHeatReady(true);
+    }).catch((err) => console.warn('[PublicIncidentMap] Heatmap plugin unavailable:', err));
+    return () => { active = false; };
+  }, []);
 
   const isInitialMount = useRef(true);
 
@@ -177,7 +184,7 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
         isFinite(p[1])
     );
 
-    if (mapMode === 'density' && safePoints.length > 0 && typeof (L as any).heatLayer === 'function') {
+    if (isHeatReady && mapMode === 'density' && safePoints.length > 0 && typeof (L as any).heatLayer === 'function') {
       try {
         const heatLayer = (L as any).heatLayer(safePoints, {
           radius: 36,
@@ -200,7 +207,7 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
         console.warn('[PublicIncidentMap] Heatmap layer creation error:', err);
       }
     }
-  }, [heatPoints, maxHeatWeight, mapMode, isMapReady]);
+  }, [heatPoints, maxHeatWeight, mapMode, isMapReady, isHeatReady]);
 
   // Marker modes show administrative centroids, not invented polygons or pins
   // implying precise incident locations. Districts is selectable even at zero.
