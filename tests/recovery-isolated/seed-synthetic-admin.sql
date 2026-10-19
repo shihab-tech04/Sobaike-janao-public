@@ -10,6 +10,7 @@ INSERT INTO public.permissions (id, module, action, name_en, name_bn)
 VALUES
   ('complaints.view', 'complaints', 'view', 'View complaints', 'অভিযোগ দেখুন'),
   ('complaints.publish', 'complaints', 'publish', 'Publish complaints', 'অভিযোগ প্রকাশ'),
+  ('responses.publish', 'responses', 'publish', 'Publish responses', 'প্রতিক্রিয়া প্রকাশ'),
   ('categories.manage', 'categories', 'manage', 'Manage taxonomy', 'শ্রেণিবিন্যাস পরিচালনা'),
   ('categories.view', 'categories', 'view', 'View taxonomy', 'শ্রেণিবিন্যাস দেখুন')
 ON CONFLICT (id) DO NOTHING;
