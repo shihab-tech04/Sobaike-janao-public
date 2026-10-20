@@ -37,13 +37,19 @@ export interface CategoryHeroBannerProps {
 export const resolvePublicAsset = (src?: string) => {
   if (!src) return src;
 
+  // Recovered banner records still point at the suspended legacy GitHub Pages
+  // origin. Keep approved illustration filenames and resolve those files from
+  // this deployment instead. Other external URLs remain untouched.
+  const legacyPrefix = 'https://shihabshajib01-cell.github.io/sobaike-janao/';
+  const assetSrc = src.startsWith(legacyPrefix) ? src.slice(legacyPrefix.length) : src;
+
   if (
-    src.startsWith('http://') ||
-    src.startsWith('https://') ||
-    src.startsWith('data:') ||
-    src.startsWith('blob:')
+    assetSrc.startsWith('http://') ||
+    assetSrc.startsWith('https://') ||
+    assetSrc.startsWith('data:') ||
+    assetSrc.startsWith('blob:')
   ) {
-    return src;
+    return assetSrc;
   }
 
   const base = import.meta.env.BASE_URL || './';
