@@ -54,7 +54,7 @@ export const resolvePublicAsset = (src?: string) => {
 
   const base = import.meta.env.BASE_URL || './';
   const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-  const normalizedSrc = src.replace(/^\/+/, '');
+  const normalizedSrc = assetSrc.replace(/^\/+/, '');
 
   return `${normalizedBase}${normalizedSrc}`;
 };
