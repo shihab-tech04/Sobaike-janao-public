@@ -48,7 +48,7 @@ jobs:
               else
                 echo "::error::Unexpected potential secret detected for ${repo}; export blocked."
                 if [ -f "/tmp/${repo}.gitleaks.json" ]; then
-                  jq -r 'group_by(.RuleID, .File)[] | ["finding", (.[0].RuleID // "unknown"), (.[0].File // "unknown"), (length|tostring)] | @tsv' "/tmp/${repo}.gitleaks.json"
+                  jq -r --arg expected 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' '.[] | [ "classified", (.RuleID // "unknown"), (.File // "unknown"), (if .Secret == $expected then "verified_publishable" elif ((.Secret // "") | startswith("sb_publishable_")) then "other_publishable" else "non_publishable" end), ((.Secret // "") | length | tostring)] | @tsv' "/tmp/${repo}.gitleaks.json"
                 fi
                 exit 1
               fi
