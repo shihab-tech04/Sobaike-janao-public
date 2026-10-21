@@ -96,6 +96,9 @@ try {
   assert.equal(await page.locator('[id^="report-card-SJ-"]').count(), 21);
   await page.locator('#filter-chip-latest').click();
   await page.locator('#report-card-SJ-2026-000021').waitFor({ state: 'visible' });
+  // The filter resets progressive pagination in a React effect after the click.
+  // Wait for the actual rendered outcome rather than sampling the previous frame.
+  await page.waitForFunction(() => document.querySelectorAll('[id^="report-card-SJ-"]').length === 10);
   assert.equal(await page.locator('[id^="report-card-SJ-"]').count(), 10,
     'changing the ranking filter resets Home pagination');
 
