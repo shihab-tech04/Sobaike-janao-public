@@ -1,0 +1,38 @@
+name: Hosted Anonymous Read Contract
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anonymous-read:
+    name: Real hosted anonymous RPCs (no writes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify live published JSON contracts, permissions and privacy
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ahiaymyqfmyyrjkwgvhi.supabase.co' }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' }}
+        run: node scripts/recovery-hosted-read-contract.mjs
+
+      - name: Upload safe aggregate read-contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosted-anon-read-${{ github.event.pull_request.head.sha || github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: recovery-evidence/anonymous-read-contract.json
