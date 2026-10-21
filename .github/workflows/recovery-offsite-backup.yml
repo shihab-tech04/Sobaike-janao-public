@@ -1,0 +1,86 @@
+name: Recovery Independent Backup Stage
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-export:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'recovery/2026-10-21-offsite-backup' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Install pinned Git history secret scanner
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/zricethezav/gitleaks/v8@v8.24.3
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: Clone full history of the two public repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p recovery/exports recovery/restored
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            git clone --no-single-branch "https://github.com/shihab-tech04/${repo}.git" "recovery/${repo}"
+            git -C "recovery/${repo}" fetch origin '+refs/heads/*:refs/remotes/origin/*' --tags --force
+          done
+      - name: Scan both repositories and all Git history, fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            gitleaks git --source "recovery/${repo}" --log-opts="--all" --no-banner --redact --exit-code=1
+          done
+      - name: Archive complete Git histories and two source snapshots per repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            cd "recovery/${repo}"
+            git bundle create "../exports/${repo}.all-refs.bundle" --all
+            git bundle verify "../exports/${repo}.all-refs.bundle"
+            git archive --format=tar origin/main | gzip -n -9 > "../exports/${repo}.main.tar.gz"
+            if [ "$repo" = "Sobaike-janao-public" ]; then
+              target='origin/recovery/2026-10-21-public-consolidation'
+            else
+              target='origin/recovery/2026-10-15-admin-modules'
+            fi
+            git archive --format=tar "$target" | gzip -n -9 > "../exports/${repo}.candidate.tar.gz"
+            {
+              printf '%s main %s\n' "$repo" "$(git rev-parse origin/main)"
+              printf '%s candidate %s\n' "$repo" "$(git rev-parse "$target")"
+              git for-each-ref --format='%(refname) %(objectname)' | sed "s@^@${repo} @"
+            } >> '../exports/REFS.txt'
+            cd ../..
+          done
+      - name: Independently restore from bundles and check SHA identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            git clone "recovery/exports/${repo}.all-refs.bundle" "recovery/restored/${repo}"
+            git -C "recovery/restored/${repo}" fsck --full --strict
+            main_sha=$(git -C "recovery/${repo}" rev-parse origin/main)
+            git -C "recovery/restored/${repo}" cat-file -e "${main_sha}^{commit}"
+            if [ "$repo" = "Sobaike-janao-public" ]; then
+              branch='origin/recovery/2026-10-21-public-consolidation'
+            else
+              branch='origin/recovery/2026-10-15-admin-modules'
+            fi
+            candidate_sha=$(git -C "recovery/${repo}" rev-parse "$branch")
+            git -C "recovery/restored/${repo}" cat-file -e "${candidate_sha}^{commit}"
+          done
+          cd recovery/exports
+          sha256sum *.bundle *.tar.gz REFS.txt > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+      - name: Upload checked backup artifact for off-GitHub Drive transfer
+        uses: actions/upload-artifact@v4
+        with:
+          name: sobaike-two-repo-bundle-backup
+          path: recovery/exports/
+          retention-days: 3
+          if-no-files-found: error
