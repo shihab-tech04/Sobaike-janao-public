@@ -82,7 +82,7 @@ jobs:
             if [ "$repo" = "Sobaike-janao-public" ]; then
               target='origin/recovery/2026-10-21-public-consolidation'
             else
-              target='origin/recovery/2026-10-15-admin-modules'
+              target='origin/recovery/2026-10-21-admin-consolidation'
             fi
             git archive --format=tar "$target" | gzip -n -9 > "../exports/${repo}.candidate.tar.gz"
             {
@@ -104,7 +104,7 @@ jobs:
             if [ "$repo" = "Sobaike-janao-public" ]; then
               branch='origin/recovery/2026-10-21-public-consolidation'
             else
-              branch='origin/recovery/2026-10-15-admin-modules'
+              branch='origin/recovery/2026-10-21-admin-consolidation'
             fi
             candidate_sha=$(git -C "recovery/${repo}" rev-parse "$branch")
             git -C "recovery/restored/${repo}" cat-file -e "${candidate_sha}^{commit}"
