@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
-            gitleaks git --source "recovery/${repo}" --log-opts="--all" --no-banner --redact --exit-code=1
+            gitleaks git --log-opts="--all" --no-banner --redact --exit-code=1 "recovery/${repo}"
           done
       - name: Archive complete Git histories and two source snapshots per repo
         shell: bash
