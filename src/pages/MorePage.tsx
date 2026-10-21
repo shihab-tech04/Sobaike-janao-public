@@ -274,6 +274,42 @@ export const MorePage: React.FC = () => {
                     {language === 'bn' ? 'দীর্ঘ লোডশেডিং, গ্যাস সংকট বা অতিরিক্ত বিদ্যুৎ বিল।' : 'Report load shedding, gas shortages, or billing issues.'}
                   </p>
                 </div>
+
+                <div className="p-5 bg-ui-surface-subtle rounded-xl border border-ui-stroke-subtle space-y-2">
+                  <span className="inline-block px-2.5 py-1 rounded-md text-[13px] font-bold bg-ui-surface text-ui-content-secondary border border-ui-stroke-subtle">
+                    {language === 'bn' ? 'জননিরাপত্তা' : 'Public Safety'}
+                  </span>
+                  <h4 className="text-[16px] font-bold text-ui-content-primary">
+                    {language === 'bn' ? 'জননিরাপত্তা' : 'Public Safety'}
+                  </h4>
+                  <p className="text-[14px] leading-[22px] text-ui-content-secondary">
+                    {language === 'bn' ? 'চুরি, ছিনতাই, ডাকাতি ও জননিরাপত্তার ঝুঁকির তথ্য।' : 'Report theft, snatching, robbery, and other public safety risks.'}
+                  </p>
+                </div>
+
+                <div className="p-5 bg-ui-surface-subtle rounded-xl border border-ui-stroke-subtle space-y-2">
+                  <span className="inline-block px-2.5 py-1 rounded-md text-[13px] font-bold bg-ui-surface text-ui-content-secondary border border-ui-stroke-subtle">
+                    {language === 'bn' ? 'সড়ক ও যাতায়াত' : 'Road & Transport'}
+                  </span>
+                  <h4 className="text-[16px] font-bold text-ui-content-primary">
+                    {language === 'bn' ? 'সড়ক ও যাতায়াত সমস্যা' : 'Road & Transport Issues'}
+                  </h4>
+                  <p className="text-[14px] leading-[22px] text-ui-content-secondary">
+                    {language === 'bn' ? 'ভাঙা রাস্তা, দুর্ঘটনার ঝুঁকি ও যাতায়াত-সংক্রান্ত সমস্যার তথ্য।' : 'Report damaged roads, traffic hazards, and transport issues.'}
+                  </p>
+                </div>
+
+                <div className="p-5 bg-ui-surface-subtle rounded-xl border border-ui-stroke-subtle space-y-2">
+                  <span className="inline-block px-2.5 py-1 rounded-md text-[13px] font-bold bg-ui-surface text-ui-content-secondary border border-ui-stroke-subtle">
+                    {language === 'bn' ? 'অবৈধ দখল' : 'Illegal Occupation'}
+                  </span>
+                  <h4 className="text-[16px] font-bold text-ui-content-primary">
+                    {language === 'bn' ? 'অবৈধ দখল' : 'Illegal Occupation'}
+                  </h4>
+                  <p className="text-[14px] leading-[22px] text-ui-content-secondary">
+                    {language === 'bn' ? 'রাস্তা, ফুটপাত ও জনসাধারণের জায়গায় অবৈধ দখলের তথ্য।' : 'Report illegal occupation of roads, footpaths, and public spaces.'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -725,8 +761,8 @@ export const MorePage: React.FC = () => {
             >
               <p className="text-ui-content-secondary text-[15px] leading-[24px]">
                 {language === 'bn'
-                  ? 'বর্তমানে নির্দিষ্ট ৪টি ক্যাটাগরিতে তথ্য জানানো যায়: হয়রানি ও নির্যাতন, অবৈধ অটো-রিকশা চার্জিং, চাঁদাবাজি এবং ইউটিলিটি/বিদ্যুৎ সমস্যা।'
-                  : 'Currently, you can report across 4 active categories: Harassment & Abuse, Illegal Auto-Charging, Extortion, and Utility/Load Shedding.'}
+                  ? 'বর্তমানে ৭টি সক্রিয় ক্যাটাগরিতে প্রতিবেদন করা যায়: হয়রানি ও নির্যাতন, অবৈধ অটো-রিকশা চার্জিং, চাঁদাবাজি ও ঘুষ, ইউটিলিটি সমস্যা, জননিরাপত্তা, সড়ক ও যাতায়াত সমস্যা এবং অবৈধ দখল।'
+                  : 'You can currently submit reports across 7 active categories: Harassment & Abuse, Illegal Auto-Rickshaw Charging, Extortion & Bribery, Utility Issues, Public Safety, Road & Transport Issues, and Illegal Occupation.'}
               </p>
             </Accordion>
 
