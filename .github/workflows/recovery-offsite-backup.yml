@@ -38,13 +38,14 @@ jobs:
             gitleaks git --log-opts="--all" --no-banner --exit-code=1 --report-format json --report-path "/tmp/${repo}.gitleaks.json" "recovery/${repo}" || result=$?
             if [ "$result" -ne 0 ]; then
               if [ "$repo" = "Sobaike-janao-public" ] && [ "$result" -eq 1 ] && jq -e --arg expected 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' '
-                (length == 6) and all(.[]; 
+                (length == 7) and all(.[]; 
                   .RuleID == "generic-api-key" and .Secret == $expected and
                   (.File == ".github/workflows/deploy.yml" or
                    .File == ".github/workflows/production-smoke.yml" or
-                   .File == ".github/workflows/public-functional-smoke.yml")
+                   .File == ".github/workflows/public-functional-smoke.yml" or
+                   .File == ".github/workflows/hosted-anonymous-read-contract.yml")
                 )' "/tmp/${repo}.gitleaks.json" >/dev/null; then
-                echo "Six known references to the active Supabase publishable (public) API key reviewed; not privileged secrets."
+                echo "Seven known references to the active Supabase publishable (public) API key reviewed; not privileged secrets."
               elif [ "$repo" = "Sobaike-Janao-Admin" ] && [ "$result" -eq 1 ] && jq -e --arg expected 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' '
                 (length == 8) and
                 ( [ .[] | select(.Secret == $expected and .RuleID == "generic-api-key" and
