@@ -33,7 +33,15 @@ jobs:
         run: |
           set -euo pipefail
           for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
-            gitleaks git --log-opts="--all" --no-banner --redact --exit-code=1 "recovery/${repo}"
+            result=0
+            gitleaks git --log-opts="--all" --no-banner --redact --exit-code=1 --report-format json --report-path "/tmp/${repo}.gitleaks.json" "recovery/${repo}" || result=$?
+            if [ "$result" -ne 0 ]; then
+              echo "::error::History secret scan requires investigation for ${repo}; export blocked."
+              if [ -f "/tmp/${repo}.gitleaks.json" ]; then
+                jq -r 'group_by(.RuleID, .File)[] | ["finding", (.[0].RuleID // "unknown"), (.[0].File // "unknown"), (length|tostring)] | @tsv' "/tmp/${repo}.gitleaks.json"
+              fi
+              exit 1
+            fi
           done
       - name: Archive complete Git histories and two source snapshots per repo
         shell: bash
