@@ -57,6 +57,16 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, className = '' }
             size="sm"
             className="shrink-0 text-[11.5px] sm:text-[12px] md:text-[13px] py-0.5 sm:py-1 px-2 sm:px-2.5 min-h-[22px] sm:min-h-[26px]"
           />
+          {report.postOrigin && (
+            <span
+              id={`report-origin-${report.id}`}
+              className="text-[11px] sm:text-[12px] font-medium text-ui-content-muted border border-ui-stroke-subtle bg-ui-surface-subtle px-2 py-0.5 rounded-md"
+            >
+              {report.postOrigin === 'admin'
+                ? (language === 'bn' ? 'উৎসভিত্তিক প্রতিবেদন' : 'Sourced report')
+                : (language === 'bn' ? 'নাগরিকের জমা দেওয়া প্রতিবেদন' : 'Citizen-submitted report')}
+            </span>
+          )}
         </div>
       </div>
 

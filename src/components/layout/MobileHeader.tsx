@@ -1,17 +1,34 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Menu, Search } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BrandLogo } from '../branding/BrandLogo';
 
 export const MobileHeader: React.FC = () => {
   const { navigateTo, language, setIsTabletMenuOpen } = useApp();
+  const [compact, setCompact] = useState(false);
+  const lastY = useRef(0);
+
+  useEffect(() => {
+    lastY.current = window.scrollY;
+    const onScroll = () => {
+      const nextY = Math.max(0, window.scrollY);
+      const delta = nextY - lastY.current;
+      if (nextY < 48) setCompact(false);
+      else if (delta > 8) setCompact(true);
+      else if (delta < -8) setCompact(false);
+      if (Math.abs(delta) > 8) lastY.current = nextY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
     <header
       id="mobile-header"
+      data-compact={compact ? 'true' : 'false'}
       className="md:hidden sticky top-0 z-40 w-full bg-ui-surface border-b border-ui-stroke-subtle pt-safe"
     >
-      <div className="flex items-center justify-between h-14 px-3 sm:px-4 max-w-full gap-2">
+      <div className={`flex items-center justify-between px-3 sm:px-4 max-w-full gap-2 transition-[height] duration-150 ${compact ? 'h-12' : 'h-14'}`}>
         {/* Left: Flex cluster containing Menu button and Brand Logo */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button

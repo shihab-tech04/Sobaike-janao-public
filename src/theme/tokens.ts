@@ -26,11 +26,68 @@ export const SECTIONS = {
       filledText: '#FFFFFF',
     },
   },
+  public_safety: {
+    key: 'public_safety' as const,
+    slug: '/public-safety',
+    nameBn: 'জননিরাপত্তা',
+    nameEn: 'Public Safety',
+    shortNameBn: 'জননিরাপত্তা',
+    shortNameEn: 'Public safety',
+    descriptionBn: 'চুরি, ডাকাতি, ছিনতাই ও জননিরাপত্তার ঝুঁকির তথ্য জানান।',
+    descriptionEn: 'Share information about theft, robbery, snatching, and public safety risks.',
+    primaryColor: '#C2413B',
+    hoverColor: '#A8322D',
+    bgColor: '#FEF2F1',
+    borderColor: '#F4C9C6',
+    textColor: '#8E2D27',
+    colors: {
+      primary: '#C2413B', hover: '#A8322D', lightBg: '#FEF2F1', bgLight: '#FEF2F1',
+      border: '#F4C9C6', text: '#8E2D27', textSafe: '#8E2D27', filledText: '#FFFFFF',
+    },
+  },
+  road_transport: {
+    key: 'road_transport' as const,
+    slug: '/road-transport',
+    nameBn: 'সড়ক ও যাতায়াত সমস্যা',
+    nameEn: 'Road & Transport Issues',
+    shortNameBn: 'সড়ক ও যাতায়াত',
+    shortNameEn: 'Road & transport',
+    descriptionBn: 'ভাঙা রাস্তা, দুর্ঘটনার ঝুঁকি ও যানজটের তথ্য জানান।',
+    descriptionEn: 'Report damaged roads, transport hazards, and serious congestion.',
+    primaryColor: '#3976A8',
+    hoverColor: '#2D628E',
+    bgColor: '#EFF6FC',
+    borderColor: '#C9DFF2',
+    textColor: '#285783',
+    colors: {
+      primary: '#3976A8', hover: '#2D628E', lightBg: '#EFF6FC', bgLight: '#EFF6FC',
+      border: '#C9DFF2', text: '#285783', textSafe: '#285783', filledText: '#FFFFFF',
+    },
+  },
+  illegal_occupation: {
+    key: 'illegal_occupation' as const,
+    slug: '/illegal-occupation',
+    nameBn: 'অবৈধ দখল',
+    nameEn: 'Illegal Occupation',
+    shortNameBn: 'অবৈধ দখল',
+    shortNameEn: 'Illegal occupation',
+    descriptionBn: 'রাস্তা, ফুটপাত বা সরকারি জায়গা অবৈধভাবে দখলের তথ্য জানান।',
+    descriptionEn: 'Report roads, footpaths, or public spaces occupied illegally.',
+    primaryColor: '#7257A4',
+    hoverColor: '#5D4689',
+    bgColor: '#F5F2FA',
+    borderColor: '#DDD4ED',
+    textColor: '#57427E',
+    colors: {
+      primary: '#7257A4', hover: '#5D4689', lightBg: '#F5F2FA', bgLight: '#F5F2FA',
+      border: '#DDD4ED', text: '#57427E', textSafe: '#57427E', filledText: '#FFFFFF',
+    },
+  },
   rickshaw: {
     key: 'rickshaw' as const,
     slug: '/rickshaw',
-    nameBn: 'অবৈধ অটো চার্জিং',
-    nameEn: 'Illegal auto-rickshaw charging',
+    nameBn: 'অবৈধ অটো-রিকশা চার্জিং স্টেশন',
+    nameEn: 'Illegal Auto-rickshaw Charging Station',
     shortNameBn: 'চার্জিং',
     shortNameEn: 'Charging',
     descriptionBn: 'অবৈধ বা ঝুঁকিপূর্ণ চার্জিং স্টেশনের অবস্থান ও তথ্য দিন।',
@@ -54,12 +111,12 @@ export const SECTIONS = {
   extortion: {
     key: 'extortion' as const,
     slug: '/extortion',
-    nameBn: 'চাঁদাবাজি',
-    nameEn: 'Extortion',
-    shortNameBn: 'চাঁদাবাজি',
-    shortNameEn: 'Extortion',
-    descriptionBn: 'দোকানপাট, পরিবহন বা এলাকায় অবৈধ চাঁদা দাবি ও হুমকির তথ্য জানান।',
-    descriptionEn: 'Report extortion, illegal tolls, or coercive demands.',
+    nameBn: 'চাঁদাবাজি ও ঘুষ',
+    nameEn: 'Extortion & Bribery',
+    shortNameBn: 'চাঁদাবাজি ও ঘুষ',
+    shortNameEn: 'Extortion & Bribery',
+    descriptionBn: 'চাঁদাবাজি, ঘুষ দাবি, অবৈধ চাঁদা বা জোরপূর্বক অর্থ আদায়ের অভিযোগ জানান।',
+    descriptionEn: 'Report alleged extortion, bribe demands, illegal tolls, or coercive payments.',
     primaryColor: '#4F5D95',
     hoverColor: '#3E4A7A',
     bgColor: '#F0F3F9',
@@ -104,6 +161,25 @@ export const SECTIONS = {
 };
 
 export type SectionKey = keyof typeof SECTIONS;
+
+/** Active public categories in the live taxonomy's stable display order. */
+export const SECTION_KEYS: SectionKey[] = [
+  'harassment',
+  'load_shedding',
+  'extortion',
+  'public_safety',
+  'road_transport',
+  'illegal_occupation',
+  'rickshaw',
+];
+
+/** Categories with a verified local report form contract. */
+export const REPORT_FORM_SECTION_KEYS: SectionKey[] = [
+  'harassment',
+  'load_shedding',
+  'extortion',
+  'rickshaw',
+];
 
 export interface ComingSoonServiceConfig {
   key: 'illegal_occupation';
@@ -248,7 +324,34 @@ export const HERO_TOKENS = {
       desktopMediaScale: 1.0,
       desktopMediaTranslateY: undefined,
     },
-  } satisfies Record<SectionKey, HeroSectionTheme>,
+    public_safety: {
+      background: '#FCEBEA',
+      ctaText: '#8E2D27',
+      ctaBorder: '#8E2D27',
+      ctaHover: '#C2413B',
+      ctaHoverText: '#FFFFFF',
+      desktopMediaPosition: 'center bottom',
+      desktopMediaScale: 1.0,
+    },
+    road_transport: {
+      background: '#EAF3FB',
+      ctaText: '#285783',
+      ctaBorder: '#285783',
+      ctaHover: '#3976A8',
+      ctaHoverText: '#FFFFFF',
+      desktopMediaPosition: 'center bottom',
+      desktopMediaScale: 1.0,
+    },
+    illegal_occupation: {
+      background: '#F0EDF7',
+      ctaText: '#57427E',
+      ctaBorder: '#57427E',
+      ctaHover: '#7257A4',
+      ctaHoverText: '#FFFFFF',
+      desktopMediaPosition: 'center bottom',
+      desktopMediaScale: 1.0,
+    },
+  } as Record<SectionKey, HeroSectionTheme>,
 };
 
 export const HERO_SLIDER_BEHAVIOR = {

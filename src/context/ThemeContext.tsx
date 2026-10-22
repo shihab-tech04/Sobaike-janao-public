@@ -2,16 +2,29 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
+export type TextSizePreference = 'standard' | 'large';
 
 export interface ThemeContextType {
   themePreference: ThemePreference;
   resolvedTheme: ResolvedTheme;
   setThemePreference: (theme: ThemePreference) => void;
+  textSizePreference: TextSizePreference;
+  setTextSizePreference: (size: TextSizePreference) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = 'sobaike-janao-theme';
+const TEXT_SIZE_STORAGE_KEY = 'sobaike-janao-text-size';
+
+function getStoredTextSize(): TextSizePreference {
+  if (typeof window === 'undefined') return 'standard';
+  try {
+    return localStorage.getItem(TEXT_SIZE_STORAGE_KEY) === 'large' ? 'large' : 'standard';
+  } catch {
+    return 'standard';
+  }
+}
 
 function getSystemTheme(): ResolvedTheme {
   if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -36,6 +49,7 @@ function getStoredPreference(): ThemePreference {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>(getStoredPreference);
+  const [textSizePreference, setTextSizePreferenceState] = useState<TextSizePreference>(getStoredTextSize);
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme);
 
   // Calculate resolved theme
@@ -80,6 +94,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [resolvedTheme]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-text-size', textSizePreference);
+    try {
+      localStorage.setItem(TEXT_SIZE_STORAGE_KEY, textSizePreference);
+    } catch {
+      // Honor the current-session selection when storage is unavailable.
+    }
+  }, [textSizePreference]);
+
   const setThemePreference = useCallback((pref: ThemePreference) => {
     setThemePreferenceState(pref);
     try {
@@ -90,8 +113,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  const setTextSizePreference = useCallback((size: TextSizePreference) => {
+    setTextSizePreferenceState(size);
+  }, []);
+
   return (
-    <ThemeContext.Provider value={{ themePreference, resolvedTheme, setThemePreference }}>
+    <ThemeContext.Provider value={{ themePreference, resolvedTheme, setThemePreference, textSizePreference, setTextSizePreference }}>
       {children}
     </ThemeContext.Provider>
   );

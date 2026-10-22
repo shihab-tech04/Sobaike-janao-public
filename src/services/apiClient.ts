@@ -1,11 +1,28 @@
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
 import { ReporterSubmissionContext, isValidReporterCoordinates } from './types';
+import { invokePublicWrite, uploadPublicEvidence } from './publicWriteGateway';
+import { VisitorSessionService } from './visitorSessionService';
+import { TaxonomyService } from './taxonomyService';
+import { publishedCustomAnswers, validateConfiguredAnswers } from './reportFormService';
 
 export interface ApiError {
   code: string;
   message: string;
   messageBn?: string;
   field?: string;
+}
+
+interface PublicResponseSubmissionResult {
+  responseId?: string;
+  message?: string;
+}
+
+interface PublicReportSubmissionResult {
+  success?: boolean;
+  code?: string;
+  message?: string;
+  reportId?: string;
+  report?: unknown;
 }
 
 class ApiClient {
@@ -19,7 +36,7 @@ class ApiClient {
       contactInfo?: string;
     }
   ): Promise<{ success: boolean; message: string; messageBn: string; responseId: string }> {
-    if (!isSupabaseConfigured() || !supabase) {
+    if (!isSupabaseConfigured()) {
       const error: ApiError = {
         code: 'SUPABASE_NOT_CONFIGURED',
         message: 'Supabase client is not configured.',
@@ -28,22 +45,25 @@ class ApiClient {
       throw error;
     }
 
-    const { data, error } = await supabase.rpc('submit_public_response', {
-      p_report_id: reportId,
-      p_response_type: 'citizen_information',
-      p_payload: {
+    const { data, error } = await invokePublicWrite<PublicResponseSubmissionResult>({
+      action: 'response',
+      reportId,
+      responseType: 'citizen_information',
+      payload: {
         description: payload.description,
         incidentDate: payload.incidentDate,
         contactConsent: payload.contactConsent,
         contactInfo: payload.contactConsent ? payload.contactInfo : undefined,
       },
+      visitorId: VisitorSessionService.getVisitorId(),
+      sessionId: VisitorSessionService.getSessionId(),
     });
 
     if (error) {
       const isNotPublished = error.message?.includes('INVALID_REPORT_STATUS');
       const isNotFound = error.message?.includes('REPORT_NOT_FOUND');
       const apiError: ApiError = {
-        code: error.code || 'RPC_ERROR',
+        code: error.code || 'PUBLIC_GATEWAY_ERROR',
         message: error.message || 'Response submission failed.',
         messageBn: isNotPublished
           ? 'শুধুমাত্র প্রকাশিত প্রতিবেদনের বিপরীতে তথ্য বা প্রতিক্রিয়া জমা দেওয়া যায়।'
@@ -76,7 +96,7 @@ class ApiClient {
       correctionDetails?: string;
     }
   ): Promise<{ success: boolean; message: string; messageBn: string; responseId: string }> {
-    if (!isSupabaseConfigured() || !supabase) {
+    if (!isSupabaseConfigured()) {
       const error: ApiError = {
         code: 'SUPABASE_NOT_CONFIGURED',
         message: 'Supabase client is not configured.',
@@ -85,32 +105,40 @@ class ApiClient {
       throw error;
     }
 
-    let { data, error } = await supabase.rpc('submit_public_response', {
-      p_report_id: reportId,
-      p_response_type: 'subject_response',
-      p_payload: payload,
+    let { data, error } = await invokePublicWrite<PublicResponseSubmissionResult>({
+      action: 'response',
+      reportId,
+      responseType: 'subject_response',
+      payload,
+      visitorId: VisitorSessionService.getVisitorId(),
+      sessionId: VisitorSessionService.getSessionId(),
     });
 
     // Backward compatibility: if the database has not applied allow_subject_response_without_responder_type.sql yet,
     // and returns INVALID_RESPONDER_TYPE when responderType is omitted, retry once with legacy default 'mentioned_person'
-    if (error && error.message?.includes('INVALID_RESPONDER_TYPE') && !payload.responderType) {
+    if (
+      error &&
+      (error.code === 'INVALID_RESPONDER_TYPE' || error.message.includes('INVALID_RESPONDER_TYPE')) &&
+      !payload.responderType
+    ) {
       const fallbackPayload = { ...payload, responderType: 'mentioned_person' as const };
-      const retryResult = await supabase.rpc('submit_public_response', {
-        p_report_id: reportId,
-        p_response_type: 'subject_response',
-        p_payload: fallbackPayload,
+      const retryResult = await invokePublicWrite<PublicResponseSubmissionResult>({
+        action: 'response',
+        reportId,
+        responseType: 'subject_response',
+        payload: fallbackPayload,
+        visitorId: VisitorSessionService.getVisitorId(),
+        sessionId: VisitorSessionService.getSessionId(),
       });
-      if (!retryResult.error) {
-        data = retryResult.data;
-        error = null;
-      }
+      data = retryResult.data;
+      error = retryResult.error;
     }
 
     if (error) {
       const isNotPublished = error.message?.includes('INVALID_REPORT_STATUS');
       const isNotFound = error.message?.includes('REPORT_NOT_FOUND');
       const apiError: ApiError = {
-        code: error.code || 'RPC_ERROR',
+        code: error.code || 'PUBLIC_GATEWAY_ERROR',
         message: error.message || 'Subject response submission failed.',
         messageBn: isNotPublished
           ? 'শুধুমাত্র প্রকাশিত প্রতিবেদনের বিপরীতে প্রতিউত্তর জমা দেওয়া যায়।'
@@ -155,7 +183,7 @@ class ApiClient {
       throw locError;
     }
 
-    if (!isSupabaseConfigured() || !supabase) {
+    if (!isSupabaseConfigured()) {
       const unavailableError: ApiError = {
         code: 'SERVICE_UNAVAILABLE',
         message: 'Submission service is currently unavailable. Your draft is preserved. Please try again later.',
@@ -176,31 +204,62 @@ class ApiClient {
 
     const hasImages = Array.isArray(images) && images.length > 0;
 
-    // Step 1: Submit complaint through the classification-aware wrapper.
-    // The existing authoritative submission function remains intact underneath this wrapper.
+    // The DB's published configuration is authoritative for both eligibility
+    // and the legacy-vs-schema submission route. Never guess from category IDs.
+    const subcategoryId = String(payload?.subcategoryId || '');
+    const form = TaxonomyService.getPublishedForm(subcategoryId);
+    if (!TaxonomyService.isPublishedConfigurationVerified() || !form) {
+      const formError: ApiError = {
+        code: 'REPORTING_CONFIGURATION_UNAVAILABLE',
+        message: 'The reporting form has changed or is unavailable. Your draft is preserved; please refresh.',
+        messageBn: 'রিপোর্ট ফর্মটি পরিবর্তিত হয়েছে বা পাওয়া যাচ্ছে না। আপনার খসড়া সংরক্ষিত আছে; অনুগ্রহ করে রিফ্রেশ করুন।',
+      };
+      throw formError;
+    }
+    const configured = form.engineMode === 'schema';
+    if (configured && subcategoryId === 'child_abduction_murder' && hasImages) {
+      const restrictedEvidence: ApiError = {
+        code: 'CHILD_SAFETY_FORM_RESTRICTED',
+        message: 'This child-safety form does not accept attachments. Remove attached files before submitting.',
+        messageBn: 'এই শিশু সুরক্ষা ফর্মে ছবি সংযুক্ত করা যায় না। জমা দেওয়ার আগে সংযুক্ত ফাইল সরান।',
+      };
+      throw restrictedEvidence;
+    }
+    if (configured && Object.keys(validateConfiguredAnswers(form, payload.customFieldAnswers || {})).length > 0) {
+      const validationError: ApiError = {
+        code: 'REPORTING_FORM_VALIDATION_FAILED',
+        message: 'Complete all required published form questions before submitting.',
+        messageBn: 'জমা দেওয়ার আগে প্রকাশিত ফর্মের সব প্রয়োজনীয় প্রশ্ন পূরণ করুন।',
+      };
+      throw validationError;
+    }
+
+    // Step 1: Route published schema forms to the server-side dynamic validator;
+    // keep all published legacy forms on their existing classification wrapper.
     const enrichedPayload = {
       ...payload,
+      customFieldAnswers: configured ? publishedCustomAnswers(form, payload.customFieldAnswers || {}) : undefined,
       reporterContext,
     };
 
-    const result = await supabase.rpc('submit_public_complaint_v2', {
-      p_payload: enrichedPayload,
-      p_client_submission_id: clientSubmissionId,
-      p_reporter_context: reporterContext,
+    const { data, error } = await invokePublicWrite<PublicReportSubmissionResult>({
+      action: 'complaint',
+      submissionRpc: configured ? 'submit_public_configured_complaint' : 'submit_public_complaint_v2',
+      payload: enrichedPayload,
+      clientSubmissionId,
+      reporterContext,
     });
-
-    const { data, error } = result;
 
     if (error) {
       const isOutdatedSchema =
         error.code === 'PGRST202' ||
-        error.message?.includes('function') ||
-        error.message?.includes('schema cache');
+        error.message.includes('function') ||
+        error.message.includes('schema cache');
       const apiError: ApiError = {
-        code: isOutdatedSchema ? 'OUTDATED_SERVER_SCHEMA' : (error.code || 'RPC_ERROR'),
+        code: isOutdatedSchema ? 'OUTDATED_SERVER_SCHEMA' : (error.code || 'PUBLIC_GATEWAY_ERROR'),
         message: isOutdatedSchema
           ? 'Submission service is undergoing updates. Your draft is preserved, please try again in a few moments.'
-          : (error.message || 'Supabase submission failed.'),
+          : error.message,
         messageBn: isOutdatedSchema
           ? 'সার্ভার হালনাগাদ হচ্ছে। আপনার খসড়াটি সংরক্ষিত রয়েছে, অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।'
           : 'প্রতিবেদন জমা দেওয়া সম্ভব হয়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।',
@@ -223,50 +282,14 @@ class ApiClient {
     // Step 2 & 3: If images are attached, upload to private Supabase bucket and register evidence
     if (hasImages && images) {
       for (const file of images) {
-        const storagePath = `public-submissions/${clientSubmissionId}/${file.name}`;
-
-        // Upload to private complaint-evidence bucket
-        const { error: uploadError } = await supabase.storage
-          .from('complaint-evidence')
-          .upload(storagePath, file, {
-            contentType: 'image/webp',
-            cacheControl: '3600',
-            upsert: false,
-          });
+        const { error: uploadError } = await uploadPublicEvidence(clientSubmissionId, file);
 
         if (uploadError) {
-          const isDuplicate =
-            uploadError.message?.toLowerCase().includes('already exists') ||
-            uploadError.message?.toLowerCase().includes('duplicate') ||
-            (uploadError as any).statusCode === '409' ||
-            (uploadError as any).status === 409;
-
-          if (!isDuplicate) {
-            const apiError: ApiError = {
-              code: 'EVIDENCE_UPLOAD_FAILED',
-              message: `Failed to upload image "${file.name}". ${uploadError.message}`,
-              messageBn:
-                'আপনার অভিযোগ সংরক্ষিত হয়েছে, তবে এক বা একাধিক ছবি আপলোড করা যায়নি। জমা সম্পন্ন করতে আবার চেষ্টা করুন।',
-            };
-            throw apiError;
-          }
-        }
-
-        // Register evidence with Supabase RPC
-        const { error: regError } = await supabase.rpc('register_public_complaint_evidence', {
-          p_client_submission_id: clientSubmissionId,
-          p_storage_path: storagePath,
-          p_file_name: file.name,
-          p_file_size_bytes: file.size,
-          p_caption: null,
-        });
-
-        if (regError) {
           const apiError: ApiError = {
-            code: regError.code || 'EVIDENCE_REGISTRATION_FAILED',
-            message: `Failed to register image "${file.name}". ${regError.message}`,
+            code: uploadError.code || 'EVIDENCE_UPLOAD_FAILED',
+            message: `Failed to upload image "${file.name}". ${uploadError.message}`,
             messageBn:
-              'আপনার অভিযোগ সংরক্ষিত হয়েছে, তবে ছবির নিবন্ধন সম্পন্ন হয়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।',
+              'আপনার অভিযোগ সংরক্ষিত হয়েছে, তবে এক বা একাধিক ছবি আপলোড করা যায়নি। জমা সম্পন্ন করতে আবার চেষ্টা করুন।',
           };
           throw apiError;
         }

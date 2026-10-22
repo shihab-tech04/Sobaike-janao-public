@@ -4,25 +4,23 @@
     <meta charset="utf-8" />
     <title>সবাইকে জানাও | Sobaike Janao</title>
     <script>
-      // Single Page Apps for GitHub Pages
-      // Redirects 404 errors to /sobaike-janao/ while preserving the route in the URL fragment (#)
-      (function() {
-        var l = window.location;
-        var pathSegments = l.pathname.split('/').filter(Boolean);
-        var repoName = 'sobaike-janao';
-        
-        // Find segments after the repo name if present
-        var repoIndex = pathSegments.indexOf(repoName);
-        var routeSegments = repoIndex !== -1 ? pathSegments.slice(repoIndex + 1) : pathSegments;
-        var routePath = routeSegments.length > 0 ? '/' + routeSegments.join('/') : '/';
-        
-        // Build the target redirect URL preserving the sub-route in the hash fragment (#)
-        var targetUrl = l.protocol + '//' + l.host + '/' + repoName + '/#' + (routePath === '/' ? '' : routePath) + (l.search || '') + (l.hash || '');
-        window.location.replace(targetUrl);
+      // Preserve deep links when GitHub Pages serves this 404 document.
+      (function () {
+        var location = window.location;
+        var isProjectHost = location.hostname.toLowerCase() === 'shihab-tech04.github.io';
+        var segments = location.pathname.split('/').filter(Boolean);
+        var projectPath = '';
+
+        if (isProjectHost && segments[0] && segments[0].toLowerCase() === 'sobaike-janao-public') {
+          projectPath = '/' + segments.shift();
+        }
+
+        // The Public app uses HashRouter. The canonical domain is hosted at /,
+        // while the GitHub Pages project has a repository-name path prefix.
+        var route = '/' + segments.join('/');
+        window.location.replace(location.origin + projectPath + '/#' + route + (location.search || ''));
       })();
     </script>
   </head>
-  <body>
-  </body>
+  <body></body>
 </html>
-

@@ -1,10 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
-// Ensure global Leaflet is set before leaflet.heat evaluates in browser
-if (typeof window !== 'undefined' && !(window as any).L) {
-  (window as any).L = L;
-}
-import 'leaflet.heat';
+// leaflet.heat is a legacy global-L plugin. A static ESM import evaluates
+// before this module can set window.L, crashing the lazy Explore route.
 
 import { ReportItem } from '../../types/report';
 import { SectionKey } from '../../theme/tokens';
@@ -33,37 +30,30 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
   language,
   selectedDistrict,
   onSelectDistrict,
-  onResetFilters,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const heatLayerRef = useRef<L.HeatLayer | null>(null);
+  const districtLayerRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   const [isMapReady, setIsMapReady] = useState(false);
+  const [isHeatReady, setIsHeatReady] = useState(false);
+  const [mapMode, setMapMode] = useState<'density' | 'points' | 'districts'>('density');
+
+  useEffect(() => {
+    (window as any).L = L;
+    let active = true;
+    import('leaflet.heat').then(() => {
+      if (active) setIsHeatReady(true);
+    }).catch((err) => console.warn('[PublicIncidentMap] Heatmap plugin unavailable:', err));
+    return () => { active = false; };
+  }, []);
 
   const isInitialMount = useRef(true);
 
-  // 1. Filter reports with real incident coordinates
-  const reportsWithRealCoords = useMemo(() => {
-    return reports.filter((r) => {
-      if (!r || !r.coordinates) return false;
-      const lat = Number(r.coordinates.lat);
-      const lng = Number(r.coordinates.lng);
-      return (
-        !isNaN(lat) &&
-        !isNaN(lng) &&
-        isFinite(lat) &&
-        isFinite(lng) &&
-        lat >= 20.0 &&
-        lat <= 27.5 &&
-        lng >= 88.0 &&
-        lng <= 93.0
-      );
-    });
-  }, [reports]);
-
-  // 2. Aggregate reports by district for fallback & district counts
+  // Only district centroids are mapped; reporter and incident exact coordinates
+  // are intentionally ignored even if a caller accidentally supplies them.
   const { districtCounts, totalMappedInDistricts } = useMemo(() => {
     const map = new Map<string, { district: DistrictInfo; count: number }>();
     let mappedInDist = 0;
@@ -95,36 +85,13 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
     };
   }, [reports]);
 
-  // 3. Determine resolution mode: 'incident' (real coords) vs 'district' (fallback)
-  const hasRealCoords = reportsWithRealCoords.length > 0;
-  const isDistrictFallback = !hasRealCoords && reports.length > 0;
-
   const totalReportsCount = reports.length;
-  const mappedCount = hasRealCoords
-    ? reportsWithRealCoords.length
-    : isDistrictFallback
-    ? totalMappedInDistricts
-    : 0;
+  const mappedCount = totalMappedInDistricts;
+  const isDistrictFallback = reports.length > 0;
 
-  // 4. Compute heat points and max intensity
+  // Heat points represent district-level aggregates, never exact incidents.
   const { heatPoints, maxHeatWeight } = useMemo(() => {
-    if (hasRealCoords) {
-      // Case 1: Build heat layer ONLY from real incident coordinates (base weight = 1)
-      const pts: Array<[number, number, number]> = [];
-      for (const r of reportsWithRealCoords) {
-        const lat = Number(r.coordinates?.lat);
-        const lng = Number(r.coordinates?.lng);
-        if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) {
-          pts.push([lat, lng, 1]);
-        }
-      }
-      // Small datasets (1-5 reports) scale smoothly to max 1-2 so even 1 report is immediately visible
-      const maxVal = reportsWithRealCoords.length <= 3 ? 1 : Math.max(2, Math.min(6, Math.ceil(reportsWithRealCoords.length / 4)));
-      return { heatPoints: pts, maxHeatWeight: maxVal };
-    }
-
-    if (isDistrictFallback) {
-      // Case 2: District-level fallback heatmap (ONE point per district, weighted by count)
+    if (districtCounts.length) {
       const pts: Array<[number, number, number]> = [];
       for (const dc of districtCounts) {
         if (dc.district) {
@@ -142,12 +109,7 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
     }
 
     return { heatPoints: [], maxHeatWeight: 1 };
-  }, [hasRealCoords, isDistrictFallback, reportsWithRealCoords, districtCounts]);
-
-  // Check dark mode
-  const isDarkMode =
-    typeof document !== 'undefined' &&
-    document.documentElement.classList.contains('dark');
+  }, [districtCounts]);
 
   // Initialize Map
   useEffect(() => {
@@ -159,22 +121,22 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
       minZoom: 6,
       maxZoom: 16,
       maxBounds: [
-        [19.5, 86.5],
-        [27.5, 94.0],
+        [20.25, 87.4],
+        [27.0, 93.1],
       ],
-      maxBoundsViscosity: 0.85,
+      maxBoundsViscosity: 1,
+      zoomSnap: 0.25,
+      worldCopyJump: false,
       zoomControl: false,
       attributionControl: true,
     });
 
-    const tileUrl = isDarkMode
-      ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
-    const tileLayer = L.tileLayer(tileUrl, {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
-      subdomains: 'abcd',
+    // CARTO's former keyless endpoint now requires a key. OSM's official raster
+    // endpoint supports low-volume browsing with visible attribution, a normal
+    // Referer and browser caching. Never prefetch tiles or suppress the Referer.
+    const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>',
+      noWrap: true,
       maxZoom: 19,
     }).addTo(map);
 
@@ -189,11 +151,13 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
         } catch {}
         heatLayerRef.current = null;
       }
+      districtLayerRef.current?.remove();
+      districtLayerRef.current = null;
       map.remove();
       mapInstanceRef.current = null;
       tileLayerRef.current = null;
     };
-  }, [isDarkMode]);
+  }, []);
 
   // Update Heatmap Layer whenever heatPoints change
   useEffect(() => {
@@ -220,11 +184,11 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
         isFinite(p[1])
     );
 
-    if (safePoints.length > 0 && typeof (L as any).heatLayer === 'function') {
+    if (isHeatReady && mapMode === 'density' && safePoints.length > 0 && typeof (L as any).heatLayer === 'function') {
       try {
         const heatLayer = (L as any).heatLayer(safePoints, {
-          radius: hasRealCoords ? 28 : 36,
-          blur: hasRealCoords ? 18 : 24,
+          radius: 36,
+          blur: 24,
           maxZoom: 14,
           max: maxHeatWeight || 1,
           minOpacity: 0.55,
@@ -243,7 +207,43 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
         console.warn('[PublicIncidentMap] Heatmap layer creation error:', err);
       }
     }
-  }, [heatPoints, maxHeatWeight, hasRealCoords, isMapReady]);
+  }, [heatPoints, maxHeatWeight, mapMode, isMapReady, isHeatReady]);
+
+  // Marker modes show administrative centroids, not invented polygons or pins
+  // implying precise incident locations. Districts is selectable even at zero.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !isMapReady) return;
+    districtLayerRef.current?.remove();
+    districtLayerRef.current = null;
+    if (mapMode === 'density') return;
+    const counts = new Map(districtCounts.map(({ district, count }) => [district.id, count]));
+    const list = mapMode === 'districts'
+      ? BANGLADESH_DISTRICTS
+      : districtCounts.map(({ district }) => district);
+    const layer = L.layerGroup();
+    for (const district of list) {
+      const count = counts.get(district.id) ?? 0;
+      const selected = selectedDistrict.toLowerCase() === district.nameEn.toLowerCase() ||
+        selectedDistrict.toLowerCase() === district.id;
+      const marker = L.circleMarker([district.lat, district.lng], {
+        radius: Math.min(15, 5 + Math.sqrt(count) * 2 + (selected ? 2 : 0)),
+        color: selected ? '#f59e0b' : '#0369a1',
+        weight: selected ? 3 : 2,
+        fillColor: count ? '#0ea5e9' : '#94a3b8',
+        fillOpacity: count ? 0.75 : 0.45,
+      });
+      marker.bindTooltip(`${language === 'bn' ? district.nameBn : district.nameEn}: ${language === 'bn' ? toBanglaDigits(count) : count} ${language === 'bn' ? 'প্রতিবেদন' : 'reports'}`);
+      marker.on('click', () => onSelectDistrict(district.nameEn));
+      marker.addTo(layer);
+    }
+    layer.addTo(map);
+    districtLayerRef.current = layer;
+    return () => {
+      layer.remove();
+      if (districtLayerRef.current === layer) districtLayerRef.current = null;
+    };
+  }, [mapMode, districtCounts, selectedDistrict, language, onSelectDistrict, isMapReady]);
 
   // Center on Selected District when changed from dropdown or district panel
   useEffect(() => {
@@ -316,13 +316,13 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
           if (!size || size.x <= 50 || size.y <= 50) {
             map.invalidateSize();
           }
-          map.flyTo([found.lat, found.lng], 10, {
+          map.flyTo([found.lat, found.lng], 9, {
             duration: 0.9,
           });
         } catch (err) {
           console.warn('[PublicIncidentMap] flyTo error:', err);
           try {
-            map.setView([found.lat, found.lng], 10);
+            map.setView([found.lat, found.lng], 9);
           } catch {}
         }
       }
@@ -428,6 +428,20 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
 
   return (
     <div className="space-y-2">
+      <div id="explore-map-modes" role="group" aria-label={language === 'bn' ? 'মানচিত্রের ধরন' : 'Map display mode'} className="flex flex-wrap gap-2">
+        {(['density', 'points', 'districts'] as const).map((mode) => (
+          <button
+            key={mode}
+            id={`explore-map-mode-${mode}`}
+            type="button"
+            aria-pressed={mapMode === mode}
+            onClick={() => setMapMode(mode)}
+            className={`min-h-[44px] px-3 py-2 rounded-xl border text-[13px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${mapMode === mode ? 'bg-ui-action-bg text-ui-action-text border-ui-action-bg' : 'bg-ui-surface text-ui-content-secondary border-ui-stroke-subtle'}`}
+          >
+            {language === 'bn' ? { density: 'ঘনত্ব', points: 'পয়েন্ট', districts: 'জেলা' }[mode] : { density: 'Density', points: 'Points', districts: 'Districts' }[mode]}
+          </button>
+        ))}
+      </div>
       {/* 1. Accessible Text Summary (Above map) */}
       <div
         role="status"
@@ -444,8 +458,8 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
       <div
         id="public-heatmap-card"
         role="region"
-        aria-label={language === 'bn' ? 'প্রতিবেদন হিটম্যাপ' : 'Reports heatmap'}
-        className="relative isolate z-0 rounded-2xl border border-ui-stroke-subtle bg-ui-surface shadow-xs overflow-hidden flex flex-col h-[330px] sm:h-[370px] md:h-[520px] md:min-h-[520px]"
+        aria-label={language === 'bn' ? 'বাংলাদেশের জেলা-ভিত্তিক প্রতিবেদন মানচিত্র' : 'Bangladesh district-level reports map'}
+        className="relative isolate z-0 rounded-2xl border border-ui-stroke-subtle bg-ui-surface shadow-xs overflow-hidden flex flex-col h-[360px] sm:h-[420px] md:h-[600px] md:min-h-[600px]"
       >
         {/* Zoom & Recenter Controls (Top-Right) */}
         <div className="absolute top-3.5 right-3.5 z-[500] flex flex-col gap-1.5 shadow-sm">
@@ -481,40 +495,23 @@ export const PublicIncidentMap: React.FC<PublicIncidentMapProps> = ({
         </div>
 
         {/* Heatmap Legend (Top-Left) */}
-        {totalReportsCount > 0 && (
+        {mapMode === 'density' && totalReportsCount > 0 && (
           <div className="absolute top-3.5 left-3.5 z-[500]">
-            <HeatmapLegend language={language} />
+            <HeatmapLegend language={language} maxDensity={maxHeatWeight} />
           </div>
         )}
 
         {/* Real Leaflet Map Container */}
         <div
           ref={mapContainerRef}
-          className="w-full flex-1 z-10 h-[330px] sm:h-[370px] md:h-[520px]"
+          className="w-full flex-1 z-10 h-[360px] sm:h-[420px] md:h-[600px]"
           style={{ backgroundColor: 'var(--ui-surface-subtle)' }}
         />
 
         {/* Empty State Banner if 0 reports match active filters */}
         {totalReportsCount === 0 && (
-          <div className="absolute inset-0 z-[550] bg-ui-surface/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
-            <MapIcon name="alert-circle" size="xl" className="text-ui-content-muted" />
-            <h4 className="text-[17px] font-bold text-ui-content-primary">
-              {language === 'bn' ? 'এই ফিল্টারে কোনো প্রতিবেদন নেই' : 'No reports match these filters'}
-            </h4>
-            <p className="text-[13px] text-ui-content-muted max-w-xs">
-              {language === 'bn'
-                ? 'বর্তমান অনুসন্ধান বা ফিল্টারের সাথে কোনো তথ্যের মিল পাওয়া যায়নি।'
-                : 'No reports found matching your current filter selection.'}
-            </p>
-            {onResetFilters && (
-              <button
-                type="button"
-                onClick={onResetFilters}
-                className="btn-primary-action px-4 py-2 rounded-xl text-[13px] font-semibold min-h-[44px] cursor-pointer mt-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus"
-              >
-                {language === 'bn' ? 'ফিল্টার রিসেট করুন' : 'Reset filters'}
-              </button>
-            )}
+          <div role="status" className="absolute bottom-8 left-3 right-3 z-[500] bg-ui-surface/95 border border-ui-stroke-subtle rounded-lg p-2 text-center text-[12px] text-ui-content-secondary pointer-events-none">
+            {language === 'bn' ? 'এই ফিল্টারে প্রতিবেদন নেই। জেলা মোডে সব ৬৪টি জেলা বেছে নিতে পারবেন।' : 'No matching reports. Choose Districts to explore all 64 districts.'}
           </div>
         )}
       </div>

@@ -1,12 +1,15 @@
 import React from 'react';
+import { toBanglaDigits } from '../../utils/formatters';
 
 interface HeatmapLegendProps {
   language: 'bn' | 'en';
+  maxDensity?: number;
   className?: string;
 }
 
 export const HeatmapLegend: React.FC<HeatmapLegendProps> = ({
   language,
+  maxDensity = 1,
   className = '',
 }) => {
   return (
@@ -34,16 +37,16 @@ export const HeatmapLegend: React.FC<HeatmapLegendProps> = ({
 
       {/* Range Labels */}
       <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-semibold text-ui-content-secondary px-0.5">
-        <span>{language === 'bn' ? 'কম' : 'Low'}</span>
-        <span>{language === 'bn' ? 'মাঝারি' : 'Medium'}</span>
-        <span>{language === 'bn' ? 'বেশি' : 'High'}</span>
+        <span>{language === 'bn' ? '১' : '1'}</span>
+        <span>{language === 'bn' ? toBanglaDigits(Math.ceil(maxDensity / 2)) : Math.ceil(maxDensity / 2)}</span>
+        <span>{language === 'bn' ? toBanglaDigits(maxDensity) : maxDensity}</span>
       </div>
 
       {/* Responsible Interpretation Note */}
       <p className="text-[9.5px] sm:text-[10px] leading-tight text-ui-content-muted pt-1 border-t border-ui-stroke-subtle/50">
         {language === 'bn'
-          ? 'এটি প্রতিবেদনের ঘনত্ব দেখায়, তীব্রতা বা যাচাই নয়।'
-          : 'Shows report concentration, not severity or verification.'}
+          ? 'জেলাভিত্তিক প্রতিবেদনের আনুমানিক ঘনত্ব, ঘটনার নির্দিষ্ট স্থান বা সত্যতা নয়।'
+          : 'District-level approximation, not exact incidents, severity or verification.'}
       </p>
     </div>
   );

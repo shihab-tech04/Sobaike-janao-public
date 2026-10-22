@@ -1,4 +1,5 @@
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { invokePublicWrite } from './publicWriteGateway';
 import {
   ReporterSubmissionContext,
   ReporterLocationCaptureResult,
@@ -280,13 +281,13 @@ export const VisitorSessionService = {
   },
 
   /**
-   * Record visit session metadata via secure Supabase RPC.
+   * Record visit session metadata via the secure Supabase Edge Function gateway.
    * Phase 8 Privacy Hardening: Browse sessions NEVER transmit or store coordinates.
    */
   async recordSession(
     status: PermissionStatus
   ): Promise<void> {
-    if (!isSupabaseConfigured() || !supabase) {
+    if (!isSupabaseConfigured()) {
       // Local or demo mode, do not fail
       return;
     }
@@ -321,7 +322,7 @@ export const VisitorSessionService = {
     };
 
     try {
-      const { error } = await supabase.rpc('record_public_visit_session', payload);
+      const { error } = await invokePublicWrite<unknown>({ action: 'session', payload });
       if (error) {
         console.warn('[VisitorSessionService] Failed to record visit session:', error.message);
       }

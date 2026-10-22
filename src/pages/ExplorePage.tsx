@@ -3,10 +3,11 @@ import { useApp } from '../context/AppContext';
 import { PublicReportService } from '../services/publicReportService';
 import { ReportItem } from '../types/report';
 import { BANGLADESH_DISTRICTS, DIVISIONS } from '../data/districts';
-import { SECTIONS, SectionKey } from '../theme/tokens';
+import { SECTIONS, SectionKey, SECTION_KEYS } from '../theme/tokens';
 import { ReportFeedSkeleton, MapExploreSkeleton } from '../components/ui/LoadingSkeleton';
 import type { ExploreViewMode } from '../components/explore/MapSectionHeader';
 import { PublicIncidentMap } from '../components/explore/PublicIncidentMap';
+import { UpazilaDrilldownPanel } from '../components/explore/UpazilaDrilldownPanel';
 import { DistrictRankingPanel } from '../components/explore/DistrictRankingPanel';
 import { RecentAreaReports } from '../components/explore/RecentAreaReports';
 import { ReportAnalyticsOverview } from '../components/explore/ReportAnalyticsOverview';
@@ -31,12 +32,17 @@ import {
   matchesHarassmentClassification,
 } from '../data/harassmentClassification';
 
-export const ExplorePage: React.FC = () => {
+export interface ExplorePageProps {
+  initialSection?: SectionKey | 'all';
+}
+
+export const ExplorePage: React.FC<ExplorePageProps> = ({ initialSection }) => {
   const { language } = useApp();
+  const startingSection = initialSection ?? 'all';
   // Default to 'reports' mode per Phase 8 product direction
   const [viewMode, setViewMode] = useState<ExploreViewMode>('reports');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSection, setSelectedSection] = useState<SectionKey | 'all'>('all');
+  const [selectedSection, setSelectedSection] = useState<SectionKey | 'all'>(startingSection);
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('all');
   const [harassmentFilters, setHarassmentFilters] = useState(EMPTY_HARASSMENT_CLASSIFICATION_FILTERS);
@@ -46,7 +52,7 @@ export const ExplorePage: React.FC = () => {
   const [isAreaSheetOpen, setIsAreaSheetOpen] = useState(false);
 
   // Temporary local draft state for mobile filter sheet
-  const [draftSection, setDraftSection] = useState<SectionKey | 'all'>('all');
+  const [draftSection, setDraftSection] = useState<SectionKey | 'all'>(startingSection);
   const [draftDivision, setDraftDivision] = useState<string>('all');
   const [draftDistrict, setDraftDistrict] = useState<string>('all');
   const [draftHarassmentFilters, setDraftHarassmentFilters] = useState(EMPTY_HARASSMENT_CLASSIFICATION_FILTERS);
@@ -54,6 +60,11 @@ export const ExplorePage: React.FC = () => {
   const [allReports, setAllReports] = useState<ReportItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedSection(startingSection);
+    setDraftSection(startingSection);
+  }, [startingSection]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -467,77 +478,31 @@ export const ExplorePage: React.FC = () => {
             {language === 'bn' ? 'সব' : 'All'}
           </button>
 
-          <button
-            type="button"
-            aria-pressed={selectedSection === 'harassment'}
-            onClick={() => setSelectedSection('harassment')}
-            className={`px-3.5 py-2 rounded-xl text-[13px] font-semibold shrink-0 cursor-pointer border transition-all flex items-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
-              selectedSection === 'harassment'
-                ? 'bg-[var(--sec-harassment-bg)] text-[var(--sec-harassment-text)] border-[var(--sec-harassment-border)] shadow-xs font-bold ring-1 ring-[var(--sec-harassment-border)]'
-                : 'bg-ui-surface border border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
-            }`}
-          >
-            <CategoryIcon section="harassment" size="xs" />
-            <span>
-              {language === 'bn'
-                ? SECTIONS.harassment.shortNameBn
-                : SECTIONS.harassment.shortNameEn}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={selectedSection === 'rickshaw'}
-            onClick={() => setSelectedSection('rickshaw')}
-            className={`px-3.5 py-2 rounded-xl text-[13px] font-semibold shrink-0 cursor-pointer border transition-all flex items-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
-              selectedSection === 'rickshaw'
-                ? 'bg-[var(--sec-rickshaw-bg)] text-[var(--sec-rickshaw-text)] border-[var(--sec-rickshaw-border)] shadow-xs font-bold ring-1 ring-[var(--sec-rickshaw-border)]'
-                : 'bg-ui-surface border border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
-            }`}
-          >
-            <CategoryIcon section="rickshaw" size="xs" />
-            <span>
-              {language === 'bn'
-                ? SECTIONS.rickshaw.shortNameBn
-                : SECTIONS.rickshaw.shortNameEn}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={selectedSection === 'extortion'}
-            onClick={() => setSelectedSection('extortion')}
-            className={`px-3.5 py-2 rounded-xl text-[13px] font-semibold shrink-0 cursor-pointer border transition-all flex items-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
-              selectedSection === 'extortion'
-                ? 'bg-[var(--sec-extortion-bg)] text-[var(--sec-extortion-text)] border-[var(--sec-extortion-border)] shadow-xs font-bold ring-1 ring-[var(--sec-extortion-border)]'
-                : 'bg-ui-surface border border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
-            }`}
-          >
-            <CategoryIcon section="extortion" size="xs" />
-            <span>
-              {language === 'bn'
-                ? SECTIONS.extortion.shortNameBn
-                : SECTIONS.extortion.shortNameEn}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={selectedSection === 'load_shedding'}
-            onClick={() => setSelectedSection('load_shedding')}
-            className={`px-3.5 py-2 rounded-xl text-[13px] font-semibold shrink-0 cursor-pointer border transition-all flex items-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
-              selectedSection === 'load_shedding'
-                ? 'bg-[var(--sec-load_shedding-bg)] text-[var(--sec-load_shedding-text)] border-[var(--sec-load_shedding-border)] shadow-xs font-bold ring-1 ring-[var(--sec-load_shedding-border)]'
-                : 'bg-ui-surface border border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
-            }`}
-          >
-            <CategoryIcon section="load_shedding" size="xs" />
-            <span>
-              {language === 'bn'
-                ? SECTIONS.load_shedding.shortNameBn
-                : SECTIONS.load_shedding.shortNameEn}
-            </span>
-          </button>
+          {SECTION_KEYS.map((key) => {
+            const isSelected = selectedSection === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => setSelectedSection(key)}
+                className={`px-3.5 py-2 rounded-xl text-[13px] font-semibold shrink-0 cursor-pointer border transition-all flex items-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
+                  isSelected
+                    ? 'shadow-xs font-bold ring-1'
+                    : 'bg-ui-surface border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
+                }`}
+                style={isSelected ? {
+                  backgroundColor: `var(--sec-${key}-bg)`,
+                  color: `var(--sec-${key}-text)`,
+                  borderColor: `var(--sec-${key}-border)`,
+                  '--tw-ring-color': `var(--sec-${key}-border)`,
+                } as React.CSSProperties : undefined}
+              >
+                <CategoryIcon section={key} size="xs" />
+                <span>{language === 'bn' ? SECTIONS[key].shortNameBn : SECTIONS[key].shortNameEn}</span>
+              </button>
+            );
+          })}
         </div>
 
         {selectedSection === 'harassment' && (
@@ -857,7 +822,7 @@ export const ExplorePage: React.FC = () => {
       {/* 5. Selected Mode Content (Map vs Reports) or Zero Result Recovery */}
       {!isLoading && !fetchError && (
         <>
-          {filteredReports.length === 0 ? (
+          {filteredReports.length === 0 && viewMode !== 'heatmap' ? (
             /* Authoritative Zero-Result Recovery State */
             <div
               role="status"
@@ -907,6 +872,12 @@ export const ExplorePage: React.FC = () => {
                   onResetFilters={handleResetFilters}
                 />
               </div>
+
+              {/* Canonical district → thana/upazila directory. Published RPCs
+                  expose district names, not a validated subdistrict report ID. */}
+              {selectedDistrict !== 'all' && (
+                <UpazilaDrilldownPanel selectedDistrict={selectedDistrict} language={language} />
+              )}
 
               {/* Mobile Selected-Area Trigger Card (Mobile only, when district is selected) */}
               {selectedDistrict !== 'all' && (
@@ -1114,69 +1085,31 @@ export const ExplorePage: React.FC = () => {
                 {language === 'bn' ? 'সব বিষয়' : 'All topics'}
               </button>
 
-              <button
-                type="button"
-                aria-pressed={draftSection === 'harassment'}
-                onClick={() => setDraftSection('harassment')}
-                className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer border transition-all flex items-center justify-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
-                  draftSection === 'harassment'
-                    ? 'bg-[var(--sec-harassment-bg)] text-[var(--sec-harassment-text)] border-[var(--sec-harassment-border)] shadow-xs font-bold ring-1 ring-[var(--sec-harassment-border)]'
-                    : 'bg-ui-surface border border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
-                }`}
-              >
-                <CategoryIcon section="harassment" size="xs" />
-                <span className="truncate">
-                  {language === 'bn' ? SECTIONS.harassment.shortNameBn : SECTIONS.harassment.shortNameEn}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                aria-pressed={draftSection === 'rickshaw'}
-                onClick={() => setDraftSection('rickshaw')}
-                className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer border transition-all flex items-center justify-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
-                  draftSection === 'rickshaw'
-                    ? 'bg-[var(--sec-rickshaw-bg)] text-[var(--sec-rickshaw-text)] border-[var(--sec-rickshaw-border)] shadow-xs font-bold ring-1 ring-[var(--sec-rickshaw-border)]'
-                    : 'bg-ui-surface border border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
-                }`}
-              >
-                <CategoryIcon section="rickshaw" size="xs" />
-                <span className="truncate">
-                  {language === 'bn' ? SECTIONS.rickshaw.shortNameBn : SECTIONS.rickshaw.shortNameEn}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                aria-pressed={draftSection === 'extortion'}
-                onClick={() => setDraftSection('extortion')}
-                className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer border transition-all flex items-center justify-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
-                  draftSection === 'extortion'
-                    ? 'bg-[var(--sec-extortion-bg)] text-[var(--sec-extortion-text)] border-[var(--sec-extortion-border)] shadow-xs font-bold ring-1 ring-[var(--sec-extortion-border)]'
-                    : 'bg-ui-surface border border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
-                }`}
-              >
-                <CategoryIcon section="extortion" size="xs" />
-                <span className="truncate">
-                  {language === 'bn' ? SECTIONS.extortion.shortNameBn : SECTIONS.extortion.shortNameEn}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                aria-pressed={draftSection === 'load_shedding'}
-                onClick={() => setDraftSection('load_shedding')}
-                className={`col-span-2 px-3 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer border transition-all flex items-center justify-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
-                  draftSection === 'load_shedding'
-                    ? 'bg-[var(--sec-load_shedding-bg)] text-[var(--sec-load_shedding-text)] border-[var(--sec-load_shedding-border)] shadow-xs font-bold ring-1 ring-[var(--sec-load_shedding-border)]'
-                    : 'bg-ui-surface border border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
-                }`}
-              >
-                <CategoryIcon section="load_shedding" size="xs" />
-                <span className="truncate">
-                  {language === 'bn' ? SECTIONS.load_shedding.shortNameBn : SECTIONS.load_shedding.shortNameEn}
-                </span>
-              </button>
+              {SECTION_KEYS.map((key) => {
+                const isSelected = draftSection === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setDraftSection(key)}
+                    className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer border transition-all flex items-center justify-center gap-1.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus ${
+                      isSelected
+                        ? 'shadow-xs font-bold ring-1'
+                        : 'bg-ui-surface border-ui-stroke-subtle text-ui-content-secondary hover:text-ui-content-primary'
+                    }`}
+                    style={isSelected ? {
+                      backgroundColor: `var(--sec-${key}-bg)`,
+                      color: `var(--sec-${key}-text)`,
+                      borderColor: `var(--sec-${key}-border)`,
+                      '--tw-ring-color': `var(--sec-${key}-border)`,
+                    } as React.CSSProperties : undefined}
+                  >
+                    <CategoryIcon section={key} size="xs" />
+                    <span className="truncate">{language === 'bn' ? SECTIONS[key].shortNameBn : SECTIONS[key].shortNameEn}</span>
+                  </button>
+                );
+              })}
             </div>
           </fieldset>
 

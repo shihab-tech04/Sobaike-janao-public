@@ -1,5 +1,5 @@
 import React from 'react';
-import { HeartHandshake, ShieldAlert, ZapOff, LucideIcon } from 'lucide-react';
+import { HeartHandshake, ShieldAlert, ZapOff, LucideIcon, ShieldCheck, Construction, Building2 } from 'lucide-react';
 import { EvStationIcon } from './EvStationIcon';
 import { SectionKey } from '../../theme/tokens';
 
@@ -20,6 +20,9 @@ const ICON_MAP: Record<SectionKey, LucideIcon | React.ComponentType<any>> = {
   rickshaw: EvStationIcon,
   extortion: ShieldAlert,
   load_shedding: ZapOff,
+  public_safety: ShieldCheck,
+  road_transport: Construction,
+  illegal_occupation: Building2,
 };
 
 const SIZE_CLASSES: Record<FeatureIconSize, string> = {

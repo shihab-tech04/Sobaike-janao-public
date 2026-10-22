@@ -15,6 +15,7 @@ export interface PublishedEvidenceRPCResult {
 const signedUrlCache = new Map<string, { signedUrl: string; expiresAt: number }>();
 const CACHE_TTL_MS = 240 * 1000;
 const SIGNED_URL_EXPIRY_SECONDS = 300;
+const RPC_REPORT_ID_BATCH_SIZE = 100;
 
 export const PublicEvidenceService = {
   /**
@@ -44,21 +45,29 @@ export const PublicEvidenceService = {
     }
 
     try {
-      // 1. Fetch published evidence metadata via sanitized RPC
-      const { data, error } = await supabase.rpc('get_public_published_report_evidence', {
-        p_report_ids: cleanIds,
-      });
+      // 1. Fetch published evidence metadata via the sanitized RPC. The backend
+      //    caps each request at 100 report IDs, while the home-feed RPC can
+      //    return the full published set, so keep each lookup within that limit.
+      const rows: PublishedEvidenceRPCResult[] = [];
+      for (let batchStart = 0; batchStart < cleanIds.length; batchStart += RPC_REPORT_ID_BATCH_SIZE) {
+        const reportIdBatch = cleanIds.slice(batchStart, batchStart + RPC_REPORT_ID_BATCH_SIZE);
+        const { data, error } = await supabase.rpc('get_public_published_report_evidence', {
+          p_report_ids: reportIdBatch,
+        });
 
-      if (error) {
-        console.warn('[PublicEvidenceService] RPC error fetching published evidence:', error);
-        return result;
+        if (error) {
+          console.warn('[PublicEvidenceService] RPC error fetching published evidence:', error);
+          return result;
+        }
+
+        if (Array.isArray(data)) {
+          rows.push(...(data as PublishedEvidenceRPCResult[]));
+        }
       }
 
-      if (!data || !Array.isArray(data) || data.length === 0) {
+      if (rows.length === 0) {
         return result;
       }
-
-      const rows = data as PublishedEvidenceRPCResult[];
 
       // Filter valid image records
       const validRows = rows.filter((row) => {

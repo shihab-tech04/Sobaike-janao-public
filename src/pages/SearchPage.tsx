@@ -8,7 +8,7 @@ import { ReportCard } from '../components/report/ReportCard';
 import { ReportFeedSkeleton } from '../components/ui/LoadingSkeleton';
 import { PublicPageContainer } from '../components/layout/PublicPageContainer';
 import { toBanglaDigits } from '../utils/formatters';
-import { SectionKey, SECTIONS } from '../theme/tokens';
+import { SectionKey, SECTIONS, SECTION_KEYS } from '../theme/tokens';
 import { Select } from '../components/ui/Select';
 import { HarassmentClassificationFilters } from '../components/report/HarassmentClassificationFilters';
 import {
@@ -17,6 +17,9 @@ import {
   matchesHarassmentClassification,
 } from '../data/harassmentClassification';
 
+const INITIAL_SEARCH_REPORT_COUNT = 10;
+const SEARCH_REPORT_PAGE_SIZE = 10;
+
 export const SearchPage: React.FC = () => {
   const { language, navigateTo, queryParams } = useApp();
   const initialQuery = queryParams.q || '';
@@ -24,6 +27,7 @@ export const SearchPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'reports' | 'locations' | 'subjects'>('all');
   const [selectedReportSegment, setSelectedReportSegment] = useState<SectionKey | 'all'>('all');
   const [harassmentFilters, setHarassmentFilters] = useState(EMPTY_HARASSMENT_CLASSIFICATION_FILTERS);
+  const [visibleReportCount, setVisibleReportCount] = useState(INITIAL_SEARCH_REPORT_COUNT);
 
   const [allReports, setAllReports] = useState<ReportItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -65,6 +69,18 @@ export const SearchPage: React.FC = () => {
     }
   }, [selectedReportSegment, harassmentFilters]);
 
+  useEffect(() => {
+    setVisibleReportCount(INITIAL_SEARCH_REPORT_COUNT);
+  }, [query, selectedReportSegment, harassmentFilters, activeTab]);
+
+  const resetSearch = () => {
+    setQuery('');
+    setSelectedReportSegment('all');
+    setHarassmentFilters(EMPTY_HARASSMENT_CLASSIFICATION_FILTERS);
+    setActiveTab('all');
+    navigateTo('/search');
+  };
+
   // Search through Reports
   const matchingReports = useMemo(() => {
     if (!query.trim() && !hasReportFilters) return [];
@@ -87,7 +103,8 @@ export const SearchPage: React.FC = () => {
         (r.reportedSubjectBn && !r.reportedSubjectBn.includes('গোপন') && r.reportedSubjectBn.toLowerCase().includes(q)) ||
         (r.reportedSubjectEn && !r.reportedSubjectEn.toLowerCase().includes('withheld') && r.reportedSubjectEn.toLowerCase().includes(q));
       const inId = r.id.toLowerCase().includes(q);
-      return inTitle || inDesc || inLoc || inSub || inId;
+      const inOrganization = (r.organization || '').toLowerCase().includes(q);
+      return inTitle || inDesc || inLoc || inSub || inOrganization || inId;
     });
   }, [allReports, query, selectedReportSegment, harassmentFilters, hasReportFilters]);
 
@@ -112,8 +129,12 @@ export const SearchPage: React.FC = () => {
     const subjectsMap = new Map<string, { nameBn: string; nameEn: string; count: number; sampleReport: any }>();
 
     allReports.forEach((r) => {
-      const subjectBn = r.reportedSubjectBn || r.reportedSubject || '';
-      const subjectEn = r.reportedSubjectEn || r.reportedSubject || '';
+      const candidates = [
+        { nameBn: r.reportedSubjectBn || r.reportedSubject || '', nameEn: r.reportedSubjectEn || r.reportedSubject || '' },
+        { nameBn: r.organization || '', nameEn: r.organization || '' },
+      ];
+      const seenNames = new Set<string>();
+      for (const { nameBn: subjectBn, nameEn: subjectEn } of candidates) {
 
       // Skip withheld subjects
       if (
@@ -122,7 +143,7 @@ export const SearchPage: React.FC = () => {
         subjectBn.toLowerCase().includes('withheld') ||
         subjectEn.toLowerCase().includes('withheld')
       ) {
-        return;
+        continue;
       }
 
       if (
@@ -130,6 +151,8 @@ export const SearchPage: React.FC = () => {
         (subjectEn && subjectEn.toLowerCase().includes(q))
       ) {
         const key = (subjectEn || subjectBn).toLowerCase();
+        if (seenNames.has(key)) continue;
+        seenNames.add(key);
         const existing = subjectsMap.get(key);
         if (existing) {
           existing.count++;
@@ -142,12 +165,18 @@ export const SearchPage: React.FC = () => {
           });
         }
       }
+      }
     });
 
     return Array.from(subjectsMap.values());
   }, [allReports, query]);
 
   const totalResults = matchingReports.length + matchingLocations.length + matchingSubjects.length;
+  const visibleTabResults = activeTab === 'reports' ? matchingReports.length
+    : activeTab === 'locations' ? matchingLocations.length
+    : activeTab === 'subjects' ? matchingSubjects.length
+    : totalResults;
+  const visibleMatchingReports = matchingReports.slice(0, visibleReportCount);
 
   return (
     <PublicPageContainer id="search-page-container">
@@ -179,6 +208,17 @@ export const SearchPage: React.FC = () => {
         />
       </div>
 
+      {(Boolean(query.trim()) || hasReportFilters) && (
+        <button
+          type="button"
+          id="search-clear-filters"
+          onClick={resetSearch}
+          className="self-start min-h-[44px] rounded-lg border border-ui-stroke-subtle px-3 py-2 text-[14px] font-semibold text-ui-content-secondary hover:bg-ui-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus"
+        >
+          {language === 'bn' ? 'অনুসন্ধান ও ফিল্টার মুছুন' : 'Clear search and filters'}
+        </button>
+      )}
+
       <section className="bg-ui-surface border border-ui-stroke-subtle rounded-xl p-3.5 sm:p-4 space-y-3" aria-label={language === 'bn' ? 'প্রতিবেদন ফিল্টার' : 'Report filters'}>
         <div className="max-w-sm">
           <Select
@@ -188,10 +228,10 @@ export const SearchPage: React.FC = () => {
             onChange={(event) => setSelectedReportSegment(event.target.value as SectionKey | 'all')}
             options={[
               { value: 'all', label: language === 'bn' ? 'সকল প্রতিবেদন' : 'All reports' },
-              { value: 'harassment', label: language === 'bn' ? SECTIONS.harassment.nameBn : SECTIONS.harassment.nameEn },
-              { value: 'rickshaw', label: language === 'bn' ? SECTIONS.rickshaw.nameBn : SECTIONS.rickshaw.nameEn },
-              { value: 'extortion', label: language === 'bn' ? SECTIONS.extortion.nameBn : SECTIONS.extortion.nameEn },
-              { value: 'load_shedding', label: language === 'bn' ? SECTIONS.load_shedding.nameBn : SECTIONS.load_shedding.nameEn },
+              ...SECTION_KEYS.map((key) => ({
+                value: key,
+                label: language === 'bn' ? SECTIONS[key].nameBn : SECTIONS[key].nameEn,
+              })),
             ]}
           />
         </div>
@@ -375,15 +415,25 @@ export const SearchPage: React.FC = () => {
                 {language === 'bn' ? 'প্রতিবেদন' : 'Reports'}
               </h2>
               <div className="space-y-3">
-                {matchingReports.map((report) => (
+                {visibleMatchingReports.map((report) => (
                   <ReportCard key={report.id} report={report} />
                 ))}
+                {visibleReportCount < matchingReports.length && (
+                  <button
+                    type="button"
+                    id="search-load-more-reports"
+                    onClick={() => setVisibleReportCount((count) => count + SEARCH_REPORT_PAGE_SIZE)}
+                    className="w-full min-h-[44px] rounded-xl border border-ui-stroke-subtle bg-ui-surface px-4 py-2 text-[14px] font-semibold text-ui-content-primary hover:bg-ui-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus"
+                  >
+                    {language === 'bn' ? 'আরও প্রতিবেদন দেখুন' : 'Load more reports'}
+                  </button>
+                )}
               </div>
             </div>
           )}
 
           {/* Empty State */}
-          {totalResults === 0 && (
+          {visibleTabResults === 0 && (
             <div className="bg-ui-surface border border-ui-stroke-subtle rounded-2xl p-10 text-center space-y-3 shadow-2xs">
               <AlertCircle className="w-8 h-8 text-ui-content-muted mx-auto" aria-hidden="true" />
               <h3 className="text-[16px] font-bold text-ui-content-primary">

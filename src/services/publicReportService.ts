@@ -7,6 +7,8 @@ import {
 } from './supabasePublicReportMapper';
 import { PublicEvidenceService } from './publicEvidenceService';
 import { PublicResponseService } from './publicResponseService';
+import { BANGLADESH_DISTRICTS } from '../data/districts';
+import { reportIsInDistrict, resolveCanonicalDistrict } from './publicDistrictMatcher.mjs';
 import {
   HarassmentAgeGroup,
   HarassmentAbuserRelationship,
@@ -123,12 +125,8 @@ export const PublicReportService = {
       list = list.filter((r) => r.subcategoryId === filters.subcategory);
     }
     if (filters?.district && filters.district !== 'all') {
-      const dist = filters.district.toLowerCase().trim();
-      list = list.filter((r) => {
-        const dEn = (r.districtEn || '').toLowerCase();
-        const dBn = (r.districtBn || '').toLowerCase();
-        return dEn.includes(dist) || dBn.includes(dist);
-      });
+      const district = resolveCanonicalDistrict(filters.district, BANGLADESH_DISTRICTS);
+      list = district ? list.filter((report) => reportIsInDistrict(report, district)) : [];
     }
     if (filters?.affectedPersonAgeGroup && filters.affectedPersonAgeGroup !== 'all') {
       list = list.filter((report) => report.affectedPersonAgeGroup === filters.affectedPersonAgeGroup);
@@ -394,8 +392,9 @@ export const PublicReportService = {
    * Fetch published reports associated with a specific location / district name.
    */
   async getByLocation(locationQuery: string): Promise<ReportItem[]> {
+    const district = resolveCanonicalDistrict(locationQuery, BANGLADESH_DISTRICTS);
+    if (!district) return [];
     const all = await this.getAll();
-    const clean = locationQuery.toLowerCase().trim();
     return all.filter((r) => {
       const distEn = (r.districtEn || '').toLowerCase();
       const distBn = (r.districtBn || '').toLowerCase();
@@ -413,12 +412,7 @@ export const PublicReportService = {
         return false;
       }
 
-      return (
-        distEn.includes(clean) ||
-        distBn.includes(clean) ||
-        locEn.includes(clean) ||
-        locBn.includes(clean)
-      );
+      return reportIsInDistrict(r, district);
     });
   },
 

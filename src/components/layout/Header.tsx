@@ -1,12 +1,13 @@
 import React from 'react';
-import { Search, Menu, PlusCircle, Home, HeartHandshake, ZapOff, ShieldAlert, Compass, PhoneCall, Globe } from 'lucide-react';
-import { EvStationIcon } from '../branding/EvStationIcon';
+import { Search, Menu, PlusCircle, Home, Compass, PhoneCall, Globe } from 'lucide-react';
 import { useApp, RoutePath } from '../../context/AppContext';
-import { SECTIONS, SectionKey } from '../../theme/tokens';
+import { SECTIONS, SectionKey, SECTION_KEYS } from '../../theme/tokens';
+import { CategoryIcon } from '../branding/CategoryIcon';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { Drawer } from '../ui/Drawer';
 import { ThemeSelector } from '../ui/ThemeSelector';
+import { TextSizeSelector } from '../ui/TextSizeSelector';
 import { getContextualReportRoute } from '../../utils/reportRoutes';
 import { BrandLogo } from '../branding/BrandLogo';
 
@@ -37,34 +38,13 @@ export const Header: React.FC = () => {
       nameEn: 'Home',
       icon: <Home className="w-4 h-4" aria-hidden="true" />,
     },
-    {
-      path: '/harassment',
-      nameBn: SECTIONS.harassment.shortNameBn,
-      nameEn: SECTIONS.harassment.shortNameEn,
-      sectionKey: 'harassment',
-      icon: <HeartHandshake className="w-4 h-4" aria-hidden="true" />,
-    },
-    {
-      path: '/rickshaw',
-      nameBn: SECTIONS.rickshaw.shortNameBn,
-      nameEn: SECTIONS.rickshaw.shortNameEn,
-      sectionKey: 'rickshaw',
-      icon: <EvStationIcon className="w-4 h-4" aria-hidden="true" />,
-    },
-    {
-      path: '/extortion',
-      nameBn: SECTIONS.extortion.shortNameBn,
-      nameEn: SECTIONS.extortion.shortNameEn,
-      sectionKey: 'extortion',
-      icon: <ShieldAlert className="w-4 h-4" aria-hidden="true" />,
-    },
-    {
-      path: '/load-shedding',
-      nameBn: SECTIONS.load_shedding.shortNameBn,
-      nameEn: SECTIONS.load_shedding.shortNameEn,
-      sectionKey: 'load_shedding',
-      icon: <ZapOff className="w-4 h-4" aria-hidden="true" />,
-    },
+    ...SECTION_KEYS.map((key) => ({
+      path: SECTIONS[key].slug as RoutePath,
+      nameBn: SECTIONS[key].shortNameBn,
+      nameEn: SECTIONS[key].shortNameEn,
+      sectionKey: key,
+      icon: <CategoryIcon section={key} size="sm" />,
+    })),
     {
       path: '/explore',
       nameBn: 'এক্সপ্লোর',
@@ -75,19 +55,7 @@ export const Header: React.FC = () => {
 
   const getSectionActiveStyles = (sectionKey?: SectionKey) => {
     if (!sectionKey) return 'bg-ui-surface-subtle text-ui-content-primary font-bold border border-ui-stroke-subtle';
-    if (sectionKey === 'harassment') {
-      return 'bg-[var(--sec-harassment-bg)] text-[var(--sec-harassment-text)] border border-[var(--sec-harassment-border)] font-bold';
-    }
-    if (sectionKey === 'rickshaw') {
-      return 'bg-[var(--sec-rickshaw-bg)] text-[var(--sec-rickshaw-text)] border border-[var(--sec-rickshaw-border)] font-bold';
-    }
-    if (sectionKey === 'extortion') {
-      return 'bg-[var(--sec-extortion-bg)] text-[var(--sec-extortion-text)] border border-[var(--sec-extortion-border)] font-bold';
-    }
-    if (sectionKey === 'load_shedding') {
-      return 'bg-[var(--sec-load_shedding-bg)] text-[var(--sec-load_shedding-text)] border border-[var(--sec-load_shedding-border)] font-bold';
-    }
-    return 'bg-ui-surface-subtle text-ui-content-primary font-bold border border-ui-stroke-subtle';
+    return 'border font-bold';
   };
 
   return (
@@ -171,6 +139,11 @@ export const Header: React.FC = () => {
                       ? getSectionActiveStyles(item.sectionKey)
                       : 'text-ui-content-secondary'
                   }`}
+                  style={isActive && item.sectionKey ? {
+                    backgroundColor: `var(--sec-${item.sectionKey}-bg)`,
+                    color: `var(--sec-${item.sectionKey}-text)`,
+                    borderColor: `var(--sec-${item.sectionKey}-border)`,
+                  } : undefined}
                 >
                   <div className="flex items-center gap-3">
                     <span className={isActive && !secConfig ? 'text-ui-content-primary' : 'text-ui-content-muted'}>
@@ -241,6 +214,13 @@ export const Header: React.FC = () => {
                 {language === 'bn' ? 'প্রদর্শন' : 'Appearance'}
               </span>
               <ThemeSelector variant="segmented" />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[14px] text-ui-content-secondary font-medium px-1">
+                {language === 'bn' ? 'লেখার আকার' : 'Text size'}
+              </span>
+              <TextSizeSelector />
             </div>
 
             {/* Language Switcher in Drawer */}

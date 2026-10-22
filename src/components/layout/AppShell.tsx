@@ -17,7 +17,6 @@ import { HarassmentPage } from '../../pages/HarassmentPage';
 import { RickshawPage } from '../../pages/RickshawPage';
 import { ExtortionPage } from '../../pages/ExtortionPage';
 import { UtilityPage } from '../../pages/UtilityPage';
-import { ComingSoonPage } from '../../pages/ComingSoonPage';
 import { ReportDetailPage } from '../../pages/ReportDetailPage';
 import { ReportPage } from '../../pages/ReportPage';
 import { SearchPage } from '../../pages/SearchPage';
@@ -26,9 +25,16 @@ import { LocationPage } from '../../pages/LocationPage';
 import { SubjectPage } from '../../pages/SubjectPage';
 import { SeoManager } from '../seo/SeoManager';
 import { MapExploreSkeleton } from '../ui/LoadingSkeleton';
+import { SectionKey } from '../../theme/tokens';
 
 const LazyExplorePage = React.lazy(() =>
   import('../../pages/ExplorePage').then((m) => ({ default: m.ExplorePage }))
+);
+
+const CategoryExploreRoute: React.FC<{ section: SectionKey }> = ({ section }) => (
+  <React.Suspense fallback={<MapExploreSkeleton />}>
+    <LazyExplorePage initialSection={section} />
+  </React.Suspense>
 );
 
 const ReportDetailRouteWrapper: React.FC = () => {
@@ -81,6 +87,10 @@ export const AppShell: React.FC = () => {
   } = useApp();
 
   const [isFirstVisitNoticeOpen, setIsFirstVisitNoticeOpen] = useState(false);
+  const [isTextFieldFocused, setIsTextFieldFocused] = useState(false);
+  const isTextEntry = (target: EventTarget | null) =>
+    target instanceof HTMLElement
+    && target.matches('input:not([readonly]):not([type="checkbox"]):not([type="radio"]), textarea, [contenteditable="true"]');
 
   useEffect(() => {
     // Check if visitor has accepted the responsibility notice
@@ -120,7 +130,12 @@ export const AppShell: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-ui-page text-ui-content-primary flex flex-col">
+    <div
+      className="min-h-screen bg-ui-page text-ui-content-primary flex flex-col"
+      data-text-entry-focused={isTextFieldFocused ? 'true' : 'false'}
+      onFocusCapture={(event) => setIsTextFieldFocused(isTextEntry(event.target))}
+      onBlurCapture={(event) => setIsTextFieldFocused(isTextEntry(event.relatedTarget))}
+    >
       {/* Skip Link for Keyboard & Screen Reader Accessibility */}
       <a
         href="#main-content"
@@ -168,7 +183,9 @@ export const AppShell: React.FC = () => {
                   <Route path="/rickshaw" element={<RickshawPage />} />
                   <Route path="/extortion" element={<ExtortionPage />} />
                   <Route path="/load-shedding" element={<UtilityPage />} />
-                  <Route path="/illegal-occupation" element={<ComingSoonPage serviceKey="illegal_occupation" />} />
+                  <Route path="/public-safety" element={<CategoryExploreRoute section="public_safety" />} />
+                  <Route path="/road-transport" element={<CategoryExploreRoute section="road_transport" />} />
+                  <Route path="/illegal-occupation" element={<CategoryExploreRoute section="illegal_occupation" />} />
                   <Route path="/report" element={<ReportPage />} />
                   <Route
                     path="/explore"
@@ -211,7 +228,7 @@ export const AppShell: React.FC = () => {
 
       {/* 5. Mobile Fixed Bottom Navigation (< 768px) */}
       <ErrorBoundary componentName="BottomNav" fallback={null}>
-        <BottomNav />
+        <BottomNav keyboardActive={isTextFieldFocused} />
       </ErrorBoundary>
 
       {/* 6. Global Search Dialog Modal */}

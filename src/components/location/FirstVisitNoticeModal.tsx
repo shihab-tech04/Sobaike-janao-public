@@ -67,6 +67,11 @@ export const FirstVisitNoticeModal: React.FC<FirstVisitNoticeModalProps> = ({
               ? 'এটি একটি স্বাধীন নাগরিক তথ্য ও জনস্বার্থ প্ল্যাটফর্ম। নির্ভুল ও তথ্যভিত্তিক নাগরিক পর্যবেক্ষণ বজায় রাখতে নিচের বিষয়গুলো মনে রাখুন:'
               : 'This is an independent citizen reporting and public interest platform. To ensure truthful and constructive records, please note:'}
           </p>
+          <p>
+            {isBn
+              ? 'এটি কোনো সরকারি সংস্থা, পুলিশ বা জরুরি সেবা নয়। এখানে জমা দেওয়া অভিযোগ প্রমাণিত সত্য বা আইনি রায় নয়; প্ল্যাটফর্মটি তদন্ত, বিচার বা আইন প্রয়োগ করে না।'
+              : 'This is not a government agency, police service, or emergency service. Reports are allegations, not verified findings or legal verdicts. The platform does not investigate, adjudicate, or enforce the law.'}
+          </p>
 
           <ol className="p-3.5 rounded-xl bg-ui-surface-subtle border border-ui-stroke-subtle text-xs space-y-2 list-none">
             <li className="flex items-start gap-2.5">

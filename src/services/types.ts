@@ -199,6 +199,8 @@ export interface DraftReport {
   segment: SectionKey | null;
   currentStep: number;
   subcategoryId: string;
+  /** Answers indexed by server-published custom_json storage keys. */
+  customFieldAnswers?: Record<string, string | number | boolean | string[]>;
   title: string;
   subjectType: 'individual' | 'business' | 'group' | 'organization' | 'unknown';
   reportedSubject: string;

@@ -3,6 +3,7 @@ import { X, Check } from 'lucide-react';
 import { SectionKey, SECTIONS } from '../../theme/tokens';
 import { IconButton } from '../ui/IconButton';
 import { CategoryIcon } from '../branding/CategoryIcon';
+import { useTaxonomy } from '../../services/taxonomyService';
 
 export interface ReportComposerHeaderProps {
   currentStep: number;
@@ -21,6 +22,7 @@ export const ReportComposerHeader: React.FC<ReportComposerHeaderProps> = ({
   onClose,
   onSelectStep,
 }) => {
+  const { getSegment } = useTaxonomy();
   const stepTitles = [
     {
       step: 1,
@@ -55,32 +57,11 @@ export const ReportComposerHeader: React.FC<ReportComposerHeaderProps> = ({
   const currentStepInfo = stepTitles[currentStep - 1] || stepTitles[0];
 
   const getSegmentStyles = (sec: SectionKey) => {
-    switch (sec) {
-      case 'harassment':
-        return {
-          bg: 'var(--sec-harassment-bg)',
-          color: 'var(--sec-harassment-text)',
-          border: 'var(--sec-harassment-border)',
-        };
-      case 'rickshaw':
-        return {
-          bg: 'var(--sec-rickshaw-bg)',
-          color: 'var(--sec-rickshaw-text)',
-          border: 'var(--sec-rickshaw-border)',
-        };
-      case 'extortion':
-        return {
-          bg: 'var(--sec-extortion-bg)',
-          color: 'var(--sec-extortion-text)',
-          border: 'var(--sec-extortion-border)',
-        };
-      case 'load_shedding':
-        return {
-          bg: 'var(--sec-load_shedding-bg)',
-          color: 'var(--sec-load_shedding-text)',
-          border: 'var(--sec-load_shedding-border)',
-        };
-    }
+    return {
+      bg: `var(--sec-${sec}-bg)`,
+      color: `var(--sec-${sec}-text)`,
+      border: `var(--sec-${sec}-border)`,
+    };
   };
 
   const progressPercentage = Math.round((currentStep / totalSteps) * 100);
@@ -106,7 +87,7 @@ export const ReportComposerHeader: React.FC<ReportComposerHeaderProps> = ({
                   }}
                 >
                   <CategoryIcon section={segment} size="xs" />
-                  <span>{language === 'bn' ? SECTIONS[segment].shortNameBn : SECTIONS[segment].shortNameEn}</span>
+                  <span>{language === 'bn' ? getSegment(segment).shortNameBn : getSegment(segment).shortNameEn}</span>
                 </div>
               )}
             </div>
