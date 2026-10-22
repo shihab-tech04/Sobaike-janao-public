@@ -80,7 +80,12 @@ jobs:
           for path, kind in parser.assets:
               target = urljoin(origin, path)
               uri = urlparse(target)
-              if uri.scheme != 'https' or uri.hostname != host:
+              # The Public app intentionally loads its Noto fonts from Google Fonts.
+              # Keep third-party loading limited to this exact HTTPS stylesheet host.
+              if uri.scheme != 'https':
+                  raise SystemExit(f'ERROR: non-HTTPS asset origin: {path}')
+              approved_external_font_css = kind == 'css' and uri.hostname == 'fonts.googleapis.com'
+              if uri.hostname != host and not approved_external_font_css:
                   raise SystemExit(f'ERROR: unexpected asset origin: {path}')
               with urlopen(Request(target, headers={'User-Agent': 'SobaikeReleaseSmoke/1.0'}), timeout=20) as response:
                   if response.status != 200:
