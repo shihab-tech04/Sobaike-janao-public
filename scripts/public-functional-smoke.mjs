@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 
-const SITE_URL = (process.env.SITE_URL || 'https://shihabshajib01-cell.github.io/sobaike-janao/').replace(/\/?$/, '/');
+const SITE_URL = (process.env.SITE_URL || 'https://shobaikejanao.com/').replace(/\/?$/, '/');
 const failures = [];
 const warnings = [];
 const results = [];
@@ -115,21 +115,28 @@ await check('Desktop routes render without runtime crashes', async () => {
   await context.close();
 });
 
-await check('Mobile bottom navigation works across all five primary sections', async () => {
+await check('Mobile bottom navigation and drawer reach primary sections', async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await seedReturningVisitor(context);
   const page = await context.newPage();
   attachRuntimeGuards(page, 'mobile-nav');
   await page.goto(routeUrl('/'), { waitUntil: 'domcontentloaded', timeout: 30000 });
   await expectVisible(page.locator('#bottom-nav'), 'mobile bottom navigation missing');
-  const cases = [
+
+  await page.locator('#bottom-nav-menu').click();
+  const drawer = page.locator('#tablet-drawer');
+  await expectVisible(drawer, 'mobile menu drawer did not open');
+  const harassmentLink = drawer.locator('nav').getByRole('button').filter({ hasText: 'হয়রানি' }).first();
+  await expectVisible(harassmentLink, 'Harassment category is missing from the mobile menu');
+  await harassmentLink.click();
+  await page.waitForTimeout(350);
+  if (!page.url().includes('#/harassment')) throw new Error(`mobile menu did not navigate to #/harassment; got ${page.url()}`);
+  await expectVisible(page.locator('#main-content'), 'mobile menu destination did not render');
+
+  for (const [selector, hash] of [
+    ['#bottom-nav-search', '#/search'],
     ['#bottom-nav-home', '#/'],
-    ['#bottom-nav-harassment', '#/harassment'],
-    ['#bottom-nav-charging', '#/rickshaw'],
-    ['#bottom-nav-extortion', '#/extortion'],
-    ['#bottom-nav-utility', '#/load-shedding'],
-  ];
-  for (const [selector, hash] of cases) {
+  ]) {
     await page.locator(selector).click();
     await page.waitForTimeout(350);
     if (!page.url().includes(hash)) throw new Error(`${selector} did not navigate to ${hash}; got ${page.url()}`);
@@ -144,7 +151,7 @@ await check('Report composer opens on mobile without submitting data', async () 
   const page = await context.newPage();
   attachRuntimeGuards(page, 'report-composer');
   await page.goto(routeUrl('/'), { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.locator('#mobile-fab-report').click();
+  await page.locator('#bottom-nav-report').click();
   await expectVisible(page.locator('#report-composer-modal'), 'report composer did not open');
   const dialog = page.locator('#report-composer-modal');
   if ((await dialog.getAttribute('role')) !== 'dialog') throw new Error('report composer is missing dialog semantics');
