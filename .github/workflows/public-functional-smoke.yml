@@ -12,10 +12,10 @@ permissions:
 jobs:
   browser-smoke:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      SITE_URL: https://shihab-tech04.github.io/Sobaike-janao-public/
+      SITE_URL: https://shobaikejanao.com/
       SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ahiaymyqfmyyrjkwgvhi.supabase.co' }}
       SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' }}
 
@@ -34,7 +34,7 @@ jobs:
 
       - name: Install Playwright runtime
         run: |
-          npm install --no-save playwright@1.55.0
+          npm install --no-save --package-lock=false playwright@1.62.1
           npx playwright install --with-deps chromium
 
       - name: Run comprehensive non-destructive Public browser smoke
