@@ -35,6 +35,19 @@ jobs:
             echo 'ERROR: original project is still embedded in the candidate bundle'
             exit 1
           fi
+      - name: Verify replacement public Edge preflight without writes
+        run: |
+          set -euo pipefail
+          for edge in public-write-gateway public-evidence-upload public-ip-location; do
+            status=$(curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' -X OPTIONS \
+              "https://eztqgqgpluoqwmprgeas.supabase.co/functions/v1/$edge" \
+              -H 'Origin: https://shobaikejanao.com' \
+              -H 'Access-Control-Request-Method: POST')
+            if [ "$status" != '200' ] && [ "$status" != '204' ]; then
+              echo "ERROR: replacement Edge $edge CORS preflight HTTP $status"
+              exit 1
+            fi
+          done
       - name: Verify replacement anonymous API without writes
         run: |
           node --input-type=module <<'NODE'
