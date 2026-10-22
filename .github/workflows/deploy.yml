@@ -108,7 +108,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for attempt in {1..36}; do
+          for attempt in {1..120}; do
             status=$(curl -fsSL \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H "Accept: application/vnd.github+json" \
@@ -116,10 +116,6 @@ jobs:
               | python -c 'import json,sys; runs=[r for r in json.load(sys.stdin).get("workflow_runs",[]) if r.get("name")=="pages build and deployment"]; print(max(runs,key=lambda r:r["id"]).get("status","none") if runs else "none")')
             if [ "$status" = "completed" ]; then
               echo "Legacy Pages publisher completed; safe to deploy Vite artifact."
-              exit 0
-            fi
-            if [ "$status" = "none" ] && [ "$attempt" -ge 6 ]; then
-              echo "No legacy publisher for this commit; continuing."
               exit 0
             fi
             sleep 5
