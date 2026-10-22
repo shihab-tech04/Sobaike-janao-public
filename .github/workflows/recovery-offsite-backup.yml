@@ -52,12 +52,16 @@ jobs:
                     .File == ".github/workflows/replacement-supabase-build-acceptance.yml")) ] | length == 5)
                 ' "/tmp/${repo}.gitleaks.json" >/dev/null; then
                 echo "Seven previously classified and five replacement Supabase publishable-key references; all unexpected secrets still fail closed."
-              elif [ "$repo" = "Sobaike-Janao-Admin" ] && [ "$result" -eq 1 ] && jq -e --arg expected 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' '
-                (length == 8) and
+              elif [ "$repo" = "Sobaike-Janao-Admin" ] && [ "$result" -eq 1 ] && jq -e --arg expected 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' --arg replacement 'sb_publishable_M8nmD6rGWp42V9kIxHJU3A_-bx57_aY' '
+                (length == 11) and
                 ( [ .[] | select(.Secret == $expected and .RuleID == "generic-api-key" and
                     (.File == ".github/workflows/deploy.yml" or
                      .File == ".github/workflows/production-smoke.yml" or
                      .File == "src/lib/supabase.ts")) ] | length == 5) and
+                ( [ .[] | select(.Secret == $replacement and .RuleID == "generic-api-key" and
+                    (.File == ".github/workflows/deploy.yml" or
+                     .File == ".github/workflows/production-smoke.yml" or
+                     .File == ".github/workflows/replacement-supabase-build-acceptance.yml")) ] | length == 3) and
                 ( [ .[] | select(.RuleID == "generic-api-key" and
                     .File == "supabase/functions/news-intake-scan/index.ts" and
                     .Commit == "50019ff70e805671411a71d18c037f9c397826d0" and
@@ -67,7 +71,7 @@ jobs:
                     .Commit == "50019ff70e805671411a71d18c037f9c397826d0" and
                     .StartLine == 1713 and (.Secret | test("^[0-9a-f]{64}$"))) ] | length == 1)
                 ' "/tmp/${repo}.gitleaks.json" >/dev/null; then
-                echo "Five known active Supabase publishable keys and three manually classified historical User-Agent/SHA256 verifier false positives; any new finding fails closed."
+                echo "Five legacy and three replacement public-key references plus three pinned historical false positives; unrecognized secret findings fail closed."
               else
                 echo "::error::Unexpected potential secret detected for ${repo}; export blocked."
                 if [ -f "/tmp/${repo}.gitleaks.json" ]; then
