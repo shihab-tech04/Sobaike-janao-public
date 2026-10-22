@@ -39,3 +39,6 @@ jobs:
 
       - name: Run comprehensive non-destructive Public browser smoke
         run: node scripts/public-functional-smoke.mjs
+
+      - name: Phase 17 read-only Public/Admin/Supabase production parity
+        run: node scripts/phase17-live-contract.mjs
