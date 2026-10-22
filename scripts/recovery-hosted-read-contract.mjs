@@ -9,8 +9,8 @@ assert.match(endpoint || '', /^https:\/\/[a-z0-9]+\.supabase\.co\/?$/);
 assert.ok(apiKey?.startsWith('sb_publishable_') || apiKey?.split('.').length === 3,
   'Use only an anonymous/publishable credential, never service_role');
 const project = new URL(endpoint).hostname;
-assert.equal(project, 'ahiaymyqfmyyrjkwgvhi.supabase.co',
-  'Never exercise a different Supabase project from this recovery workflow');
+assert.equal(project, 'eztqgqgpluoqwmprgeas.supabase.co',
+  'Never exercise a different Supabase project from this replacement-backend workflow');
 
 async function readRpc(name, payload = {}) {
   const url = new URL('/rest/v1/rpc/' + name, endpoint);
