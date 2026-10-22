@@ -34,10 +34,20 @@ jobs:
 
       - name: Build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ahiaymyqfmyyrjkwgvhi.supabase.co' }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' }}
+          VITE_SUPABASE_URL: https://eztqgqgpluoqwmprgeas.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_M8nmD6rGWp42V9kIxHJU3A_-bx57_aY
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
         run: npm run build
+
+      - name: Verify bundle is wired only to replacement Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -R -l --include='*.js' 'eztqgqgpluoqwmprgeas.supabase.co' dist/ >/dev/null
+          if grep -R -l --include='*.js' 'ahiaymyqfmyyrjkwgvhi.supabase.co' dist/; then
+            echo 'ERROR: published bundle still includes original Supabase project'
+            exit 1
+          fi
 
       - name: Verify Vite output
         run: |

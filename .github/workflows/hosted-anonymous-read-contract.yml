@@ -24,8 +24,8 @@ jobs:
 
       - name: Verify live published JSON contracts, permissions and privacy
         env:
-          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://ahiaymyqfmyyrjkwgvhi.supabase.co' }}
-          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' }}
+          SUPABASE_URL: https://eztqgqgpluoqwmprgeas.supabase.co
+          SUPABASE_KEY: sb_publishable_M8nmD6rGWp42V9kIxHJU3A_-bx57_aY
         run: node scripts/recovery-hosted-read-contract.mjs
 
       - name: Upload safe aggregate read-contract evidence
