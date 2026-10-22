@@ -1,0 +1,132 @@
+name: Recovery Independent Backup Stage
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-export:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'recovery/2026-10-21-offsite-backup' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Install pinned Git history secret scanner
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/zricethezav/gitleaks/v8@v8.24.3
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: Clone full history of the two public repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p recovery/exports recovery/restored
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            git clone --no-single-branch "https://github.com/shihab-tech04/${repo}.git" "recovery/${repo}"
+            git -C "recovery/${repo}" fetch origin '+refs/heads/*:refs/remotes/origin/*' --tags --force
+          done
+      - name: Scan both repositories and all Git history, fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -f /tmp/Sobaike-*.gitleaks.json' EXIT
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            result=0
+            gitleaks git --log-opts="--all" --no-banner --exit-code=1 --report-format json --report-path "/tmp/${repo}.gitleaks.json" "recovery/${repo}" || result=$?
+            if [ "$result" -ne 0 ]; then
+              if [ "$repo" = "Sobaike-janao-public" ] && [ "$result" -eq 1 ] && jq -e --arg old 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' --arg replacement 'sb_publishable_M8nmD6rGWp42V9kIxHJU3A_-bx57_aY' '
+                (length == 12) and
+                ([ .[] | select(.RuleID == "generic-api-key" and .Secret == $old and
+                   (.File == ".github/workflows/deploy.yml" or
+                    .File == ".github/workflows/production-smoke.yml" or
+                    .File == ".github/workflows/public-functional-smoke.yml" or
+                    .File == ".github/workflows/hosted-anonymous-read-contract.yml")) ] | length == 7) and
+                ([ .[] | select(.RuleID == "generic-api-key" and .Secret == $replacement and
+                   (.File == ".github/workflows/deploy.yml" or
+                    .File == ".github/workflows/production-smoke.yml" or
+                    .File == ".github/workflows/public-functional-smoke.yml" or
+                    .File == ".github/workflows/hosted-anonymous-read-contract.yml" or
+                    .File == ".github/workflows/replacement-supabase-build-acceptance.yml")) ] | length == 5)
+                ' "/tmp/${repo}.gitleaks.json" >/dev/null; then
+                echo "Seven previously classified and five replacement Supabase publishable-key references; all unexpected secrets still fail closed."
+              elif [ "$repo" = "Sobaike-Janao-Admin" ] && [ "$result" -eq 1 ] && jq -e --arg expected 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' --arg replacement 'sb_publishable_M8nmD6rGWp42V9kIxHJU3A_-bx57_aY' '
+                (length == 11) and
+                ( [ .[] | select(.Secret == $expected and .RuleID == "generic-api-key" and
+                    (.File == ".github/workflows/deploy.yml" or
+                     .File == ".github/workflows/production-smoke.yml" or
+                     .File == "src/lib/supabase.ts")) ] | length == 5) and
+                ( [ .[] | select(.Secret == $replacement and .RuleID == "generic-api-key" and
+                    (.File == ".github/workflows/deploy.yml" or
+                     .File == ".github/workflows/production-smoke.yml" or
+                     .File == ".github/workflows/replacement-supabase-build-acceptance.yml")) ] | length == 3) and
+                ( [ .[] | select(.RuleID == "generic-api-key" and
+                    .File == "supabase/functions/news-intake-scan/index.ts" and
+                    .Commit == "50019ff70e805671411a71d18c037f9c397826d0" and
+                    .StartLine == 689 and ((.Secret | length) == 12 or (.Secret | length) == 19)) ] | length == 2) and
+                ( [ .[] | select(.RuleID == "generic-api-key" and
+                    .File == "supabase/functions/news-intake-scan/index.ts" and
+                    .Commit == "50019ff70e805671411a71d18c037f9c397826d0" and
+                    .StartLine == 1713 and (.Secret | test("^[0-9a-f]{64}$"))) ] | length == 1)
+                ' "/tmp/${repo}.gitleaks.json" >/dev/null; then
+                echo "Five legacy and three replacement public-key references plus three pinned historical false positives; unrecognized secret findings fail closed."
+              else
+                echo "::error::Unexpected potential secret detected for ${repo}; export blocked."
+                if [ -f "/tmp/${repo}.gitleaks.json" ]; then
+                  jq -r --arg expected 'sb_publishable_3wqaYyxPJ6spRNS0jNOi4w_69Jqc3-b' '.[] | [ "classified", (.RuleID // "unknown"), (.File // "unknown"), (if .Secret == $expected then "verified_publishable" elif ((.Secret // "") | startswith("sb_publishable_")) then "other_publishable" else "non_publishable" end), ((.Secret // "") | length | tostring), (.Commit // "unknown"), (.StartLine // 0 | tostring)] | @tsv' "/tmp/${repo}.gitleaks.json"
+                fi
+                exit 1
+              fi
+            fi
+          done
+      - name: Archive complete Git histories and two source snapshots per repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            cd "recovery/${repo}"
+            git bundle create "../exports/${repo}.all-refs.bundle" --all
+            git bundle verify "../exports/${repo}.all-refs.bundle"
+            git archive --format=tar origin/main | gzip -n -9 > "../exports/${repo}.main.tar.gz"
+            if [ "$repo" = "Sobaike-janao-public" ]; then
+              target='origin/recovery/2026-10-21-public-consolidation'
+            else
+              target='origin/recovery/2026-10-21-admin-consolidation'
+            fi
+            git archive --format=tar "$target" | gzip -n -9 > "../exports/${repo}.candidate.tar.gz"
+            {
+              printf '%s main %s\n' "$repo" "$(git rev-parse origin/main)"
+              printf '%s candidate %s\n' "$repo" "$(git rev-parse "$target")"
+              git for-each-ref --format='%(refname) %(objectname)' | sed "s@^@${repo} @"
+            } >> '../exports/REFS.txt'
+            cd ../..
+          done
+      - name: Independently restore from bundles and check SHA identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            git clone "recovery/exports/${repo}.all-refs.bundle" "recovery/restored/${repo}"
+            git -C "recovery/restored/${repo}" fsck --full --strict
+            main_sha=$(git -C "recovery/${repo}" rev-parse origin/main)
+            git -C "recovery/restored/${repo}" cat-file -e "${main_sha}^{commit}"
+            if [ "$repo" = "Sobaike-janao-public" ]; then
+              branch='origin/recovery/2026-10-21-public-consolidation'
+            else
+              branch='origin/recovery/2026-10-21-admin-consolidation'
+            fi
+            candidate_sha=$(git -C "recovery/${repo}" rev-parse "$branch")
+            git -C "recovery/restored/${repo}" cat-file -e "${candidate_sha}^{commit}"
+          done
+          cd recovery/exports
+          sha256sum *.bundle *.tar.gz REFS.txt > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+      - name: Upload checked backup artifact for off-GitHub Drive transfer
+        uses: actions/upload-artifact@v4
+        with:
+          name: sobaike-two-repo-bundle-backup
+          path: recovery/exports/
+          retention-days: 3
+          if-no-files-found: error

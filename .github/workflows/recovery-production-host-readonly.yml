@@ -1,0 +1,76 @@
+name: Sobaike Production Host Read-only Preflight
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-hosting:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'recovery/2026-10-21-offsite-backup' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve canonical DNS and GitHub Pages settings
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          for domain in shobaikejanao.com www.shobaikejanao.com admin.shobaikejanao.com; do
+            echo "DOMAIN: $domain"
+            dig +short "$domain" A | head -8
+            dig +short "$domain" CNAME | head -8
+          done
+          for repo in Sobaike-janao-public Sobaike-Janao-Admin; do
+            echo "PAGES_SETTINGS: $repo"
+            curl --silent --show-error --max-time 12 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/shihab-tech04/${repo}/pages" \
+              | jq -c '{status,html_url,cname,build_type,source,https_enforced,message}' || true
+          done
+      - name: Probe actual HTML and bundle references without modifying production
+        shell: bash
+        run: |
+          set -uo pipefail
+          urls=(
+            'https://shobaikejanao.com/'
+            'https://www.shobaikejanao.com/'
+            'https://admin.shobaikejanao.com/'
+            'https://shihab-tech04.github.io/Sobaike-janao-public/'
+            'https://shihab-tech04.github.io/Sobaike-Janao-Admin/'
+          )
+          n=0
+          for url in "${urls[@]}"; do
+            n=$((n+1))
+            echo "SITE $n: $url"
+            meta=$(curl --location --silent --show-error --max-time 20 -o "/tmp/sobaike-site-${n}.html" -w 'http=%{http_code} final=%{url_effective} type=%{content_type} bytes=%{size_download}' "$url" 2>&1 || true)
+            echo "$meta"
+            if [ -f "/tmp/sobaike-site-${n}.html" ]; then
+              python - "$n" <<'PY'
+          import pathlib, re, sys
+          h=pathlib.Path('/tmp/sobaike-site-'+sys.argv[1]+'.html').read_text(errors='replace')
+          print('react_root='+str(bool(re.search(r'id=["\x27]root["\x27]', h))))
+          print('bundled_js='+str(bool(re.search(r'(assets/[^"\x27 ]+\.js)',h))))
+          print('legacy_source_entry='+str('/src/main.tsx' in h))
+          PY
+            fi
+          done
+      - name: Safe CORS OPTIONS preflights only
+        shell: bash
+        run: |
+          set -uo pipefail
+          for fn in public-write-gateway public-evidence-upload; do
+            for origin in https://shobaikejanao.com https://shihab-tech04.github.io; do
+              echo "CORS: $fn origin=$origin"
+              curl --silent --show-error --max-time 15 -o /dev/null \
+                -X OPTIONS \
+                -H "Origin: $origin" \
+                -H "Access-Control-Request-Method: POST" \
+                -w 'http=%{http_code}\n' \
+                "https://ahiaymyqfmyyrjkwgvhi.supabase.co/functions/v1/$fn" || true
+            done
+          done
