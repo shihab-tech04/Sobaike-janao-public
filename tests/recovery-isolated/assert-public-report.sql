@@ -61,9 +61,27 @@ BEGIN
                    AND custom_field_answers->>'rideShareRole'='passenger') THEN
     RAISE EXCEPTION 'Ride-sharing published custom answers were not saved';
   END IF;
-  IF EXISTS (SELECT 1 FROM public.complaints c WHERE c.client_submission_id LIKE 'ci-schema-%'
-             AND c.status<>'submitted') THEN
-    RAISE EXCEPTION 'Schema-driven synthetic reports unexpectedly auto-published';
+  -- The real isolated AAL2 Admin test deliberately withdrew the child
+  -- configured-form report; the other form must stay unreviewed.
+  IF (SELECT count(*) FROM public.complaints
+      WHERE client_submission_id LIKE 'ci-schema-ride_sharing_safety-%'
+        AND status='submitted') <> 1 THEN
+    RAISE EXCEPTION 'Unmoderated ride-sharing configured report changed status';
+  END IF;
+  IF (SELECT count(*) FROM public.complaints
+      WHERE client_submission_id LIKE 'ci-schema-child_abduction_murder-%'
+        AND status='unpublished') <> 1 THEN
+    RAISE EXCEPTION 'Expected one explicitly withdrawn child-safety report';
+  END IF;
+  IF (SELECT count(*) FROM public.admin_audit_logs a
+      JOIN public.complaints c ON c.id=a.target_id
+      WHERE c.client_submission_id LIKE 'ci-schema-child_abduction_murder-%'
+        AND a.action='complaint.unpublish') <> 1 THEN
+    RAISE EXCEPTION 'Expected one authenticated Admin withdrawal audit';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.complaints
+      WHERE client_submission_id LIKE 'ci-schema-%' AND status='published') THEN
+    RAISE EXCEPTION 'Configured-form report unexpectedly remains public';
   END IF;
 
   IF (SELECT count(*) FROM public.complaints c WHERE c.client_submission_id LIKE 'ci-alltypes-%') <> 25 THEN

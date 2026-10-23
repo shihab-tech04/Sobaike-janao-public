@@ -202,6 +202,57 @@ for (const forbidden of ['private-citizen-reply@example.test', 'private-subject-
 }
 console.log('PHASE07_RESPONSE_MODERATION_AND_CORRECTION_PASS');
 
+// Phase 17: Use a SECOND synthetic Edge-submitted complaint for withdrawal.
+// The original report remains published so downstream evidence/response tests
+// continue validating their established published-only protections.
+const withdrawalReportId = process.env.RECOVERY_SYNTHETIC_WITHDRAW_REPORT_ID;
+assert.match(withdrawalReportId || '', /^SJ-[0-9]{4}-[0-9]{6}$/);
+assert.notEqual(withdrawalReportId, reportId, 'withdrawal fixture must not alter original evidence fixture');
+
+assert.equal(unwrap(await visitor.rpc('get_public_published_report', {
+  p_report_id: withdrawalReportId,
+}), 'unreviewed withdrawal fixture'), null);
+assert.ok((await visitor.rpc('admin_unpublish_complaint', {
+  p_complaint_id: withdrawalReportId, p_reason: 'Synthetic test',
+})).error, 'anonymous visitors cannot withdraw complaints');
+
+const withdrawalPublication = unwrap(await adminAuth.rpc('admin_publish_complaint', {
+  p_complaint_id: withdrawalReportId,
+}), 'AAL2 publish second isolated submission');
+assert.equal(withdrawalPublication.status, 'published');
+for (const rpc of ['get_public_home_feed', 'get_public_published_reports']) {
+  const rows = unwrap(await visitor.rpc(rpc), `${rpc} before withdrawal`);
+  assert.equal(rows.filter((item) => item.id === withdrawalReportId).length, 1,
+    `${rpc} must expose second published fixture once`);
+}
+assert.equal(unwrap(await adminAuth.rpc('has_permission', {
+  p_permission_id: 'complaints.unpublish',
+}), 'AAL2 withdrawal permission'), true);
+const withdrawn = unwrap(await adminAuth.rpc('admin_unpublish_complaint', {
+  p_complaint_id: withdrawalReportId, p_reason: 'Synthetic isolated rollback',
+}), 'AAL2 authorized withdrawal');
+assert.equal(withdrawn.success, true);
+assert.equal(withdrawn.status, 'unpublished');
+assert.equal(withdrawn.previous_status, 'published');
+const withdrawnRow = unwrap(await adminAuth.from('complaints').select('id,status')
+  .eq('id', withdrawalReportId), 'Admin confirmation of withdrawal');
+assert.equal(withdrawnRow.length, 1);
+assert.equal(withdrawnRow[0].status, 'unpublished');
+for (const rpc of ['get_public_home_feed', 'get_public_published_reports']) {
+  assertNotPresent(unwrap(await visitor.rpc(rpc), `${rpc} after withdrawal`)
+    .filter((row) => row.id === withdrawalReportId), `${rpc} after withdrawal`);
+}
+assert.equal(unwrap(await visitor.rpc('get_public_published_report', {
+  p_report_id: withdrawalReportId,
+}), 'withdrawn report detail'), null);
+assert.deepEqual(unwrap(await visitor.rpc('get_public_published_responses', {
+  p_report_id: withdrawalReportId,
+}), 'withdrawn report responses'), []);
+assert.ok(unwrap(await visitor.rpc('get_public_published_report', {
+  p_report_id: reportId,
+}), 'original published evidence fixture'), 'withdrawal must preserve original published report');
+console.log('PHASE17_EDGE_SUBMISSION_AAL2_WITHDRAWAL_PUBLIC_HIDING_PASS');
+
 // Phase 04: exercise the actual Admin create/edit/move RPCs through a real
 // AAL2 session. These records exist only in the disposable local fixture.
 const publishedBefore = unwrap(await visitor.rpc('get_public_reporting_configuration'), 'taxonomy before mutations');
