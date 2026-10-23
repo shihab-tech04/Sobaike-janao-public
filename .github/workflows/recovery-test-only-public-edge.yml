@@ -185,6 +185,7 @@ jobs:
       - name: Test actual Auth + TOTP Admin moderation-to-Public SQL contract
         env:
           RECOVERY_SYNTHETIC_REPORT_ID: ${{ steps.synthetic_submit.outputs.synthetic_report_id }}
+          RECOVERY_SYNTHETIC_WITHDRAW_REPORT_ID: ${{ steps.synthetic_submit.outputs.synthetic_withdraw_report_id }}
         run: node tests/recovery-isolated/admin-publication-contract.mjs
 
       - name: Check published-only evidence retrieval after authentic Admin MFA moderation
