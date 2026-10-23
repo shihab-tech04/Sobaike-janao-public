@@ -16,7 +16,7 @@ jobs:
       VITE_SUPABASE_URL: https://eztqgqgpluoqwmprgeas.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_M8nmD6rGWp42V9kIxHJU3A_-bx57_aY
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4

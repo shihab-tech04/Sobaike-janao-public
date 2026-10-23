@@ -20,7 +20,7 @@ jobs:
       RECOVERY_BROWSER_APP: public
       RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:4173
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
