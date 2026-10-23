@@ -205,35 +205,7 @@ console.log('PHASE07_RESPONSE_MODERATION_AND_CORRECTION_PASS');
 // Phase 17: Use a SECOND synthetic Edge-submitted complaint for withdrawal.
 // The original report remains published so downstream evidence/response tests
 // continue validating their established published-only protections.
-const withdrawalSubmissionId = `ci-withdrawal-${randomUUID().replaceAll('-', '')}`;
-const gatewayRes = await fetch(`${api}/functions/v1/public-write-gateway`, {
-  method: 'POST',
-  headers: {
-    apikey: anonKey, Authorization: `Bearer ${anonKey}`,
-    Origin: 'http://localhost:5173', 'content-type': 'application/json',
-    'x-real-ip': '192.0.2.76',
-  },
-  body: JSON.stringify({
-    action: 'complaint', submissionRpc: 'submit_public_complaint_v2',
-    clientSubmissionId: withdrawalSubmissionId,
-    reporterContext: {
-      latitude: 23.75, longitude: 90.39, accuracy_meters: 50,
-      visitor_id: 'ci-withdrawal-visitor', session_id: 'ci-withdrawal-session',
-    },
-    payload: {
-      segment: 'road_transport', subcategoryId: 'road-accident',
-      title: 'Synthetic isolated withdrawal report',
-      description: 'Disposable test-only report, not a real incident.',
-      privacyChoice: 'anonymous',
-      location: { division: 'Dhaka', district: 'Dhaka', upazilaOrThana: 'Dhanmondi' },
-    },
-  }),
-  signal: AbortSignal.timeout(25_000),
-});
-assert.equal(gatewayRes.status, 200, 'second synthetic Edge submission must succeed');
-const gatewayReply = await gatewayRes.json();
-assert.equal(gatewayReply.success, true, 'second synthetic Edge submission must be accepted');
-const withdrawalReportId = gatewayReply.result?.reportId;
+const withdrawalReportId = process.env.RECOVERY_SYNTHETIC_WITHDRAW_REPORT_ID;
 assert.match(withdrawalReportId || '', /^SJ-[0-9]{4}-[0-9]{6}$/);
 assert.notEqual(withdrawalReportId, reportId, 'withdrawal fixture must not alter original evidence fixture');
 
