@@ -261,6 +261,12 @@ async function submitPublishedSchemaForms() {
     assert.equal(first.json.success, true,
       `${entry.subcategoryId} dynamic schema rejected: ${JSON.stringify(first.json)}`);
     assert.match(first.json.result?.reportId, /^SJ-[0-9]{4}-[0-9]{6}$/);
+    // Reuse a real configured-form Edge submission for the isolated AAL2
+    // withdrawal phase; do not issue an extra write that can hit rate limits.
+    if (entry.subcategoryId === 'child_abduction_murder' && process.env.GITHUB_OUTPUT) {
+      appendFileSync(process.env.GITHUB_OUTPUT,
+        `synthetic_withdraw_report_id=${first.json.result.reportId}\n`);
+    }
 
     const retry = await endpoint('public-write-gateway', req);
     assert.equal(retry.json.success, true, `${entry.subcategoryId} retry rejected`);
