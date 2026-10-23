@@ -256,4 +256,34 @@ assert.equal(taxonomyAfter.forms.some((f) => f.subcategoryId === 'ci_phase04_tax
 assert.ok(unwrap(await visitor.rpc('get_public_published_report', { p_report_id: reportId }),
   'published report must survive taxonomy move'), 'historical published report was lost');
 console.log('PASS: AAL2 Admin draft/rename/reorder/move and public active-only propagation with historical preservation');
+// Phase 17: The submitted report came through the *real localhost Public
+// Edge gateway*. Withdraw it with the genuine AAL2 Admin RPC, then prove all
+// three anonymous discovery APIs and approved responses cease exposing it.
+assert.ok((await visitor.rpc('admin_unpublish_complaint', {
+  p_complaint_id: reportId, p_reason: 'Synthetic isolated rollback',
+})).error, 'anonymous visitors cannot withdraw published complaints');
+assert.equal(unwrap(await adminAuth.rpc('has_permission', {
+  p_permission_id: 'complaints.unpublish',
+}), 'AAL2 withdrawal permission'), true);
+const withdrawn = unwrap(await adminAuth.rpc('admin_unpublish_complaint', {
+  p_complaint_id: reportId, p_reason: 'Synthetic isolated rollback',
+}), 'authorized synthetic withdrawal');
+assert.equal(withdrawn.success, true);
+assert.equal(withdrawn.status, 'unpublished');
+assert.equal(withdrawn.previous_status, 'published');
+
+const withdrawnSql = unwrap(await adminAuth.from('complaints').select('id,status').eq('id', reportId),
+  'Admin confirmation of withdrawn report');
+assert.equal(withdrawnSql.length, 1);
+assert.equal(withdrawnSql[0].status, 'unpublished');
+for (const rpc of ['get_public_home_feed', 'get_public_published_reports']) {
+  const items = unwrap(await visitor.rpc(rpc), `${rpc} after withdrawal`);
+  assertNotPresent(items, `${rpc} after withdrawal`);
+}
+assert.equal(unwrap(await visitor.rpc('get_public_published_report', { p_report_id: reportId }),
+  'detail after withdrawal'), null);
+assert.deepEqual(unwrap(await visitor.rpc('get_public_published_responses', { p_report_id: reportId }),
+  'responses after withdrawal'), [], 'approved responses must disappear when parent report is withdrawn');
+console.log('PHASE17_EDGE_SUBMISSION_AAL2_WITHDRAWAL_PUBLIC_HIDING_PASS');
+
 console.log('SYNTHETIC_ADMIN_PUBLICATION_CONTRACT_PASS');
