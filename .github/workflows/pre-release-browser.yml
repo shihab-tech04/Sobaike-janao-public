@@ -80,6 +80,11 @@ jobs:
           RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:4173
         run: node tests/recovery-discovery-browser-smoke.mjs
 
+      - name: Phase17 Public search and detail error/no-results/retry contracts
+        env:
+          RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:4173
+        run: node tests/phase17-public-error-recovery-browser.mjs
+
       - name: Public map browser fixtures
         env:
           RECOVERY_BROWSER_BASE_URL: http://127.0.0.1:4173
@@ -97,6 +102,7 @@ jobs:
           retention-days: 14
           path: |
             ${{ runner.temp }}/sobaike-responsive-smoke/
+            ${{ runner.temp }}/sobaike-phase17-recovery/
             ${{ runner.temp }}/preview.log
             ${{ runner.temp }}/built-index.sha256
             dist/browser-tested-sha.txt
