@@ -38,7 +38,7 @@ async function context() {
   return c;
 }
 
-function routeSyntheticRpcs(page, handler) {
+async function routeSyntheticRpcs(page, handler) {
   const unauthorized = [];
   page.on('request', request => {
     const u = new URL(request.url());
@@ -47,7 +47,7 @@ function routeSyntheticRpcs(page, handler) {
       unauthorized.push(u.pathname);
     }
   });
-  page.route('**/rest/v1/rpc/*', async route => {
+  await page.route('**/rest/v1/rpc/*', async route => {
     const u = new URL(route.request().url());
     if (route.request().method() === 'OPTIONS') {
       await route.fulfill({ status: 200, headers, body: '' });
@@ -69,7 +69,7 @@ try {
     try {
       const page = await c.newPage();
       let fail = true;
-      const unauthorized = routeSyntheticRpcs(page, name => {
+      const unauthorized = await routeSyntheticRpcs(page, name => {
         if (name === 'get_public_published_reports') {
           return fail ? { status: 503, body: { message: 'Synthetic connection unavailable' } }
                       : { body: [report] };
@@ -105,7 +105,7 @@ try {
     const c = await context();
     try {
       const page = await c.newPage();
-      const unauthorized = routeSyntheticRpcs(page, name =>
+      const unauthorized = await routeSyntheticRpcs(page, name =>
         name === 'get_public_published_report' ? { body: null } : { body: [] });
       await page.goto(base + '#/report-detail/SJ-PHASE17-NONPUBLIC-SYNTHETIC', { waitUntil: 'domcontentloaded' });
       await page.locator('#report-detail-not-found-container').waitFor({ state: 'visible' });
@@ -122,7 +122,7 @@ try {
     try {
       const page = await c.newPage();
       let fail = true;
-      const unauthorized = routeSyntheticRpcs(page, name => {
+      const unauthorized = await routeSyntheticRpcs(page, name => {
         if (name === 'get_public_published_report') {
           return fail ? { status: 503, body: { message: 'Synthetic detail network failure' } }
                       : { body: report };
