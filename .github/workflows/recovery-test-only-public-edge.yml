@@ -19,12 +19,12 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Checkout exact Public PR/source commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Checkout verified test-only backend fixture (immutable revision)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: shihab-tech04/Sobaike-Janao-Admin
           ref: 3d1ab699408ddfe0f898c3a87e4057eda5ca8427
