@@ -49,6 +49,26 @@ assert.ok(Array.isArray(reports.json) && reports.json.length > 0);
 assert.ok(Array.isArray(home.json) && home.json.length > 0);
 assert.equal(popularity.json?.length, 7, 'category popularity result');
 
+// Phase17 X06: real hosted rankings must include every active category exactly
+// once, preserve a complete rank sequence, and never advertise negative metrics.
+// This checks the public RPC output; it does not force-refresh the 72-hour snapshot.
+const activeSegmentIds = cfg.json.segments.map((segment) => segment.id);
+assert.ok(activeSegmentIds.every((id) => typeof id === 'string' && id.length > 0),
+  'published category configuration requires stable segment IDs');
+const categoryIds = popularity.json.map((row) => row.segment_id);
+assert.deepEqual([...categoryIds].sort(), [...activeSegmentIds].sort(),
+  'popularity listing must match the exact active Public category set');
+assert.equal(new Set(categoryIds).size, 7, 'popularity must not duplicate a category');
+const ranks = popularity.json.map((row) => Number(row.popularity_rank)).sort((a, b) => a - b);
+assert.deepEqual(ranks, [1, 2, 3, 4, 5, 6, 7],
+  'popularity ranks must form a contiguous 1–7 sequence');
+for (const row of popularity.json) {
+  for (const metric of ['published_post_count', 'view_count', 'share_count']) {
+    assert.ok(Number.isFinite(Number(row[metric])) && Number(row[metric]) >= 0,
+      'popularity ' + metric + ' must be nonnegative for ' + row.segment_id);
+  }
+}
+
 const forbidden = new Set([
   'latitude', 'longitude', 'lat', 'lng', 'coordinates', 'coordinate',
   'distance_m', 'distance_meters', 'visitor_lat', 'visitor_lng',
